@@ -462,8 +462,8 @@
     "remainingAmount": "مبلغ باقیمانده",
     "customerCopy": "کاپی خریدار",
     "estimatedBill": "فاکتور تخمینی",
-    "usd": "دالر",
-    "afn": "افغانی",
+    "usd": "",
+    "afn": "",
     "meterAmount": "مقدار متر",
     "grainAmount": "مقدار دانه",
     "khadaAmount": "مقدار خاده",
@@ -1310,7 +1310,7 @@
     "role": "نقش",
     "addAccount": "افزودن حساب",
     "editAccount": "ویرایش حساب",
-    "accountsSubtitle": "نگهداری نمودار حساب‌ها و مانده‌ها (افغانی و دالر).",
+    "accountsSubtitle": "نگهداری نمودار حساب‌ها و مانده‌ها (افغانی و دالر)",
     "formSubtitle": "ایجاد یا ویرایش حساب دفتر کل (افغانی یا دالر)",
     "accountDetails": "جزئیات حساب",
     "category": "دسته‌بندی",
@@ -1339,7 +1339,7 @@
     "runningBalance": "مانده جاری",
     "filterByCurrency": "ارز",
     "selectAccount": "حساب را انتخاب کنید",
-    "currencyAll": "همه (AFN و USD)",
+    "currencyAll": "همه",
     "accountAddSuccess": "حساب با موفقیت افزوده شد",
     "accountAddError": "خطا در افزودن حساب",
     "accountUpdateSuccess": "حساب با موفقیت به‌روزرسانی شد",
@@ -1393,8 +1393,8 @@
     "creditTotal": "جمع بستانکار",
     "account": "حساب",
     "lineMemo": "یادداشت",
-    "debit": "بدهکار (AFN)",
-    "credit": "بستانکار (AFN)",
+    "debit": "بدهکار",
+    "credit": "بستانکار",
     "customer": "مشتری",
     "loading": "در حال بارگیری مشتری...",
     "fetchError": "خطا در بارگیری مشتری",
@@ -1697,7 +1697,7 @@
     "ledgerTagAP": "حساب‌های پرداختنی",
     "ledger": "لیجر",
     "registrationDate": "تاریخ ثبت‌نام",
-    "ledgerSubtitleHint": "مانده از خطوط حساب‌های پرداختنی — به ارز هر حساب (افغانی یا دلار)."
+    "ledgerSubtitleHint": "مانده از خطوط حساب‌های پرداختنی — به ارز هر حساب (افغانی یا دلار)"
   },
   "payroll": {
     "payrolls": "حقوق و دستمزد",
@@ -1890,7 +1890,7 @@
     "invoiceHistory": "تاریخچه فاکتور",
     "ledgerTagAR": "حساب‌های دریافتنی",
     "ledger": "لیجر",
-    "ledgerSubtitleHint": "مانده از خطوط حساب‌های دریافتنی — به ارز هر حساب (افغانی یا دلار)."
+    "ledgerSubtitleHint": "مانده از خطوط حساب‌های دریافتنی — به ارز هر حساب (افغانی یا دلار)"
   },
   "category": {
     "title": "دسته‌بندی‌ها",

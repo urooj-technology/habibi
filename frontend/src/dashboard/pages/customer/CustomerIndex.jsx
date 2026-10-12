@@ -47,6 +47,23 @@ import { InlineAlert } from '../../../components/AlertMessage';
 import { FormModal } from '../../../components/Modal';
 import { FormSelectField, FormDatePicker } from '../../../components/FormFields';
 
+function formatMoney(amount) {
+  if (amount == null || amount === "") return "—";
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat(undefined, {
+    style: "decimal",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+function remainingColor(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n === 0) return "success.main";
+  return n > 0 ? "warning.main" : "error.main";
+}
+
 const CustomerIndex = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -155,23 +172,7 @@ const CustomerIndex = () => {
       sortable: true,
       minWidth: 140,
       align: 'center',
-      format: (value) => {
-        if (!value || !value.total_amount || Object.keys(value.total_amount).length === 0) return '-';
-
-        return (
-          <Box>
-            {Object.entries(value.total_amount).map(([currency, amount]) => (
-              <Typography key={currency} variant="body2" sx={{ mb: 0.5 }}>
-                {new Intl.NumberFormat(undefined, {
-                  style: 'decimal',
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }).format(amount)} {currency==="USD" ? t('sales.usd') : t('sales.afn')}
-              </Typography>
-            ))}
-          </Box>
-        );
-      }
+      format: (value) => formatMoney(value?.total_amount),
     },
     {
       id: 'financial_summary',
@@ -179,50 +180,18 @@ const CustomerIndex = () => {
       sortable: true,
       minWidth: 140,
       align: 'center',
-      format: (value) => {
-        if (!value || !value.paid_amount || Object.keys(value.paid_amount).length === 0) return '-';
-
-        return (
-          <Box>
-            {Object.entries(value.paid_amount).map(([currency, amount]) => (
-              <Typography key={currency} variant="body2" sx={{ mb: 0.5 }}>
-                {new Intl.NumberFormat(undefined, {
-                  style: 'decimal',
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }).format(amount)} {currency==="USD" ? t('sales.usd') : t('sales.afn')}
-              </Typography>
-            ))}
-          </Box>
-        );
-      }
+      format: (value) => formatMoney(value?.paid_amount),
     },
     {
       id: 'financial_summary',
       label: t('customer.totalRemaining'),
       sortable: true,
       minWidth: 140,
-      format: (value) => {
-        if (!value || !value.remaining_amount || Object.keys(value.remaining_amount).length === 0) return '-';
-
-        return (
-          <Box>
-            {Object.entries(value.remaining_amount).map(([currency, amount]) => {
-              const color = amount < 0 ? 'error.main' : amount > 0 ? 'warning.main' : 'success.main';
-
-              return (
-                <Typography key={currency} variant="body2" sx={{ mb: 0.5, color }}>
-                  {new Intl.NumberFormat(undefined, {
-                    style: 'decimal',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  }).format(amount)} {currency==="USD" ? t('sales.usd') : t('sales.afn')}
-                </Typography>
-              );
-            })}
-          </Box>
-        );
-      }
+      format: (value) => (
+        <Typography variant="body2" sx={{ color: remainingColor(value?.remaining_amount) }}>
+          {formatMoney(value?.remaining_amount)}
+        </Typography>
+      ),
     },
     {
       id: "actions",
@@ -413,18 +382,7 @@ const CustomerIndex = () => {
                     {t('customer.totalAmount')}
                   </Typography>
                   <Typography variant="body1">
-                    {selectedCustomer.financial_summary && selectedCustomer.financial_summary.total_amount && 
-                     Object.keys(selectedCustomer.financial_summary.total_amount).length > 0 ? 
-                      Object.entries(selectedCustomer.financial_summary.total_amount).map(([currency, amount]) => (
-                        <Box key={currency}>
-                          {new Intl.NumberFormat(undefined, {
-                            style: 'decimal',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          }).format(amount)} {currency}
-                        </Box>
-                      )) 
-                      : '-'}
+                    {formatMoney(selectedCustomer.financial_summary?.total_amount)}
                   </Typography>
                 </Grid> 
 
@@ -433,18 +391,7 @@ const CustomerIndex = () => {
                     {t('customer.totalPaid')}
                   </Typography>
                   <Typography variant="body1">
-                    {selectedCustomer.financial_summary && selectedCustomer.financial_summary.paid_amount && 
-                     Object.keys(selectedCustomer.financial_summary.paid_amount).length > 0 ? 
-                      Object.entries(selectedCustomer.financial_summary.paid_amount).map(([currency, amount]) => (
-                        <Box key={currency}>
-                          {new Intl.NumberFormat(undefined, {
-                            style: 'decimal',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          }).format(amount)} {currency}
-                        </Box>
-                      )) 
-                      : '-'}
+                    {formatMoney(selectedCustomer.financial_summary?.paid_amount)}
                   </Typography>
                 </Grid>
 
@@ -452,23 +399,11 @@ const CustomerIndex = () => {
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     {t('customer.totalRemaining')}
                   </Typography>
-                  <Typography variant="body1">
-                    {selectedCustomer.financial_summary && selectedCustomer.financial_summary.remaining_amount && 
-                     Object.keys(selectedCustomer.financial_summary.remaining_amount).length > 0 ? 
-                      Object.entries(selectedCustomer.financial_summary.remaining_amount).map(([currency, amount]) => {
-                        const color = amount < 0 ? 'error.main' : amount > 0 ? 'warning.main' : 'success.main';
-
-                        return (
-                          <Box key={currency} sx={{ color }}>
-                            {new Intl.NumberFormat(undefined, {
-                              style: 'decimal',
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            }).format(amount)} {currency}
-                          </Box>
-                        );
-                      }) 
-                      : '-'}
+                  <Typography
+                    variant="body1"
+                    sx={{ color: remainingColor(selectedCustomer.financial_summary?.remaining_amount) }}
+                  >
+                    {formatMoney(selectedCustomer.financial_summary?.remaining_amount)}
                   </Typography>
                 </Grid>
 
@@ -513,70 +448,30 @@ const CustomerIndex = () => {
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     {t('customer.totalAmount')}
                   </Typography>
-                  {selectedCustomer.financial_summary && selectedCustomer.financial_summary.total_amount && 
-                   Object.keys(selectedCustomer.financial_summary.total_amount).length > 0 ? (
-                    <Box>
-                      {Object.entries(selectedCustomer.financial_summary.total_amount).map(([currency, amount]) => (
-                        <Typography key={currency} variant="body1" sx={{ mb: 0.5 }} fontWeight="medium">
-                          {new Intl.NumberFormat(undefined, {
-                            style: 'decimal',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          }).format(amount)} {currency}
-                        </Typography>
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography variant="body1">-</Typography>
-                  )}
+                  <Typography variant="body1" fontWeight="medium">
+                    {formatMoney(selectedCustomer.financial_summary?.total_amount)}
+                  </Typography>
                 </Grid>
                 
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     {t('customer.totalPaid')}
                   </Typography>
-                  {selectedCustomer.financial_summary && selectedCustomer.financial_summary.paid_amount && 
-                   Object.keys(selectedCustomer.financial_summary.paid_amount).length > 0 ? (
-                    <Box>
-                      {Object.entries(selectedCustomer.financial_summary.paid_amount).map(([currency, amount]) => (
-                        <Typography key={currency} variant="body1" sx={{ mb: 0.5 }}>
-                          {new Intl.NumberFormat(undefined, {
-                            style: 'decimal',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          }).format(amount)} {currency}
-                        </Typography>
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography variant="body1">-</Typography>
-                  )}
+                  <Typography variant="body1">
+                    {formatMoney(selectedCustomer.financial_summary?.paid_amount)}
+                  </Typography>
                 </Grid>
                 
                 <Grid item xs={12} sm={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     {t('customer.totalRemaining')}
                   </Typography>
-                  {selectedCustomer.financial_summary && selectedCustomer.financial_summary.remaining_amount && 
-                   Object.keys(selectedCustomer.financial_summary.remaining_amount).length > 0 ? (
-                    <Box>
-                      {Object.entries(selectedCustomer.financial_summary.remaining_amount).map(([currency, amount]) => {
-                        const color = amount < 0 ? 'error.main' : amount > 0 ? 'warning.main' : 'success.main';
-
-                        return (
-                          <Typography key={currency} variant="body1" sx={{ mb: 0.5, color }}>
-                            {new Intl.NumberFormat(undefined, {
-                              style: 'decimal',
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            }).format(amount)} {currency}
-                          </Typography>
-                        );
-                      })}
-                    </Box>
-                  ) : (
-                    <Typography variant="body1">-</Typography>
-                  )}
+                  <Typography
+                    variant="body1"
+                    sx={{ color: remainingColor(selectedCustomer.financial_summary?.remaining_amount) }}
+                  >
+                    {formatMoney(selectedCustomer.financial_summary?.remaining_amount)}
+                  </Typography>
                 </Grid>
               </Grid>
             </Grid>

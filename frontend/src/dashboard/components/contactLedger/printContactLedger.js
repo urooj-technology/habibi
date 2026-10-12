@@ -35,7 +35,7 @@ function moneyCell(value) {
  * @param {object} [opts.profile]
  * @param {string} opts.from
  * @param {string} opts.to
- * @param {Array} opts.sections - currency sections with lines + balances
+ * @param {Array} opts.sections - ledger sections with lines + balances
  * @param {(type: string) => string} opts.labelTxn
  * @param {(status: string) => string} opts.labelStatus
  */
@@ -58,7 +58,6 @@ export function printContactLedger({
 
   const sectionHtml = sections
     .map((section) => {
-      const ccy = section.currency || "";
       const lines = section.lines || [];
       const rows =
         lines.length > 0
@@ -92,25 +91,25 @@ export function printContactLedger({
           : `<tr><td colspan="10" class="empty">No activity in this period</td></tr>`;
 
       return `
-      <section class="currency-block">
-        <div class="currency-head">
-          <h2>${escapeHtml(ccy || "Ledger")} Ledger</h2>
+      <section class="ledger-block">
+        <div class="ledger-head">
+          <h2>Ledger</h2>
           <div class="bal-grid">
             <div class="bal-card">
               <span class="bal-label">Opening</span>
-              <span class="bal-value">${formatMoney(section.opening_balance)} <small>${escapeHtml(ccy)}</small></span>
+              <span class="bal-value">${formatMoney(section.opening_balance)}</span>
             </div>
             <div class="bal-card">
               <span class="bal-label">Debit</span>
-              <span class="bal-value">${formatMoney(section.period_debit)} <small>${escapeHtml(ccy)}</small></span>
+              <span class="bal-value">${formatMoney(section.period_debit)}</span>
             </div>
             <div class="bal-card">
               <span class="bal-label">Credit</span>
-              <span class="bal-value">${formatMoney(section.period_credit)} <small>${escapeHtml(ccy)}</small></span>
+              <span class="bal-value">${formatMoney(section.period_credit)}</span>
             </div>
             <div class="bal-card emphasize">
               <span class="bal-label">Closing</span>
-              <span class="bal-value">${formatMoney(section.closing_balance)} <small>${escapeHtml(ccy)}</small></span>
+              <span class="bal-value">${formatMoney(section.closing_balance)}</span>
             </div>
           </div>
         </div>
@@ -123,9 +122,9 @@ export function printContactLedger({
               <th style="width:110px">Reference</th>
               <th style="width:120px">Type</th>
               <th>Description</th>
-              <th style="width:92px" class="num">Debit (${escapeHtml(ccy)})</th>
-              <th style="width:92px" class="num">Credit (${escapeHtml(ccy)})</th>
-              <th style="width:100px" class="num">Balance (${escapeHtml(ccy)})</th>
+              <th style="width:92px" class="num">Debit</th>
+              <th style="width:92px" class="num">Credit</th>
+              <th style="width:100px" class="num">Balance</th>
               <th style="width:72px">Status</th>
             </tr>
           </thead>
@@ -238,17 +237,17 @@ export function printContactLedger({
       grid-template-columns: 1fr 1fr;
       gap: 8px 14px;
     }
-    .currency-block {
+    .ledger-block {
       margin-bottom: 16px;
       page-break-inside: avoid;
     }
-    .currency-block + .currency-block {
+    .ledger-block + .ledger-block {
       page-break-before: always;
     }
-    .currency-head {
+    .ledger-head {
       margin-bottom: 8px;
     }
-    .currency-head h2 {
+    .ledger-head h2 {
       margin: 0 0 8px;
       font-size: 13px;
       font-weight: 800;
@@ -288,11 +287,6 @@ export function printContactLedger({
       font-size: 13px;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
-    }
-    .bal-value small {
-      font-size: 10px;
-      font-weight: 600;
-      opacity: 0.8;
     }
     .ledger-table {
       width: 100%;
@@ -371,7 +365,7 @@ export function printContactLedger({
       font-weight: 600;
     }
     @media print {
-      .currency-block { page-break-inside: auto; }
+      .ledger-block { page-break-inside: auto; }
       .ledger-table tr { page-break-inside: avoid; }
     }
   </style>
@@ -408,12 +402,6 @@ export function printContactLedger({
         <div>
           <span class="label">Account ID</span>
           <div class="value" style="font-size:12px">#${escapeHtml(contactId)}</div>
-        </div>
-        <div>
-          <span class="label">Currencies</span>
-          <div class="value" style="font-size:12px">${escapeHtml(
-            sections.map((s) => s.currency).filter(Boolean).join(" · ") || "—"
-          )}</div>
         </div>
       </div>
     </section>

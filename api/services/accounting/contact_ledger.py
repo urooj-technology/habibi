@@ -152,54 +152,36 @@ def financial_summary_from_invoices_and_subledger(
     paid_on_invoices_by_currency: dict[str, Decimal] | None = None,
 ) -> dict:
     """
-    Build list-view financial summary so paid/remaining match the contact ledger.
+    Build list-view financial summary (single amount totals — no currency split).
 
     Invoice totals come from Sale/Purchase documents; remaining balance comes from
-  the AR/AP subledger (includes manual journal payments, not only received_amount).
+    the AR/AP subledger (includes manual journal payments, not only received_amount).
     """
     balances = contact_subledger_balances_by_currency(kind, contact_id)
     paid_on = paid_on_invoices_by_currency or {}
-    currencies = (
-        set(invoice_totals_by_currency.keys())
-        | set(balances.keys())
-        | set(paid_on.keys())
-        | {"AFN", "USD"}
-    )
 
-    total_amount: dict[str, Decimal] = {}
-    paid_amount: dict[str, Decimal] = {}
-    remaining_amount: dict[str, Decimal] = {}
-    paid_on_invoices: dict[str, Decimal] = {}
-    paid_in_advance: dict[str, Decimal] = {}
+    inv = sum((Decimal(v or 0) for v in invoice_totals_by_currency.values()), ZERO)
+    bal = sum((Decimal(v or 0) for v in balances.values()), ZERO)
+    on_invoice = sum((Decimal(v or 0) for v in paid_on.values()), ZERO)
 
-    for currency in currencies:
-        inv = invoice_totals_by_currency.get(currency, ZERO)
-        bal = balances.get(currency, ZERO)
-        on_invoice = paid_on.get(currency, ZERO)
+    if bal > ZERO:
+        remaining = bal.quantize(MONEY)
+        advance = ZERO
+    else:
+        remaining = ZERO
+        advance = abs(bal).quantize(MONEY)
 
-        if bal > ZERO:
-            remaining = bal.quantize(MONEY)
-            advance = ZERO
-        else:
-            remaining = ZERO
-            advance = abs(bal).quantize(MONEY)
+    paid = (inv - remaining).quantize(MONEY)
+    if paid < ZERO:
+        paid = ZERO
 
-        paid = (inv - remaining).quantize(MONEY)
-        if paid < ZERO:
-            paid = ZERO
-
-        total_amount[currency] = inv.quantize(MONEY)
-        remaining_amount[currency] = remaining
-        paid_amount[currency] = paid
-        paid_on_invoices[currency] = on_invoice.quantize(MONEY)
-        paid_in_advance[currency] = advance
-
+    # Flat numbers for the UI (no AFN/USD keys).
     return {
-        "total_amount": dict(sorted(total_amount.items())),
-        "paid_amount": dict(sorted(paid_amount.items())),
-        "remaining_amount": dict(sorted(remaining_amount.items())),
-        "paid_on_invoices": dict(sorted(paid_on_invoices.items())),
-        "paid_in_advance": dict(sorted(paid_in_advance.items())),
+        "total_amount": str(inv.quantize(MONEY)),
+        "paid_amount": str(paid),
+        "remaining_amount": str(remaining),
+        "paid_on_invoices": str(on_invoice.quantize(MONEY)),
+        "paid_in_advance": str(advance),
     }
 
 
@@ -598,7 +580,6 @@ def _ledger_section_for_currency(
                 "transaction_type": txn_type,
                 "line_memo": line.line_memo,
                 "description": description,
-                "currency": line_ccy,
                 "account": {
                     "id": line.account.id,
                     "code": line.account.code,
@@ -653,7 +634,6 @@ def _ledger_section_for_currency(
         }
 
     return {
-        "currency": currency,
         "opening_balance": str(opening_balance.quantize(Decimal("0.01"))),
         "period_debit": str(total_debit.quantize(Decimal("0.01"))),
         "period_credit": str(total_credit.quantize(Decimal("0.01"))),
@@ -688,9 +668,7 @@ def build_contact_ledger_payload(
     """
     Build ledger JSON for customer or supplier.
 
-    currency_filter: '', 'AFN', or 'USD'.
-    When empty (All currencies), returns separate per-currency `sections`
-    so AFN and USD are never mixed in one running balance.
+    Single ledger section (no multi-currency split).
     """
     contact = (
         Customer.objects.filter(pk=contact_id).first()
@@ -698,99 +676,51 @@ def build_contact_ledger_payload(
         else Supplier.objects.filter(pk=contact_id).first()
     )
     id_key = "customer_id" if kind == "customer" else "supplier_id"
-    ccy = (currency_filter or "").upper()
-    if ccy and ccy not in (AccountingAccount.Currency.AFN, AccountingAccount.Currency.USD):
-        ccy = ""
 
-    currencies = (
-        [ccy]
-        if ccy
-        else [AccountingAccount.Currency.AFN, AccountingAccount.Currency.USD]
+    section = _ledger_section_for_currency(
+        kind=kind,
+        contact_id=contact_id,
+        date_from=date_from,
+        date_to=date_to,
+        currency=AccountingAccount.Currency.AFN,
+        transaction_type=transaction_type,
+        status=status,
+        search=search,
+        amount_min=amount_min,
+        amount_max=amount_max,
     )
 
-    built = []
-    for currency in currencies:
-        section = _ledger_section_for_currency(
-            kind=kind,
-            contact_id=contact_id,
-            date_from=date_from,
-            date_to=date_to,
-            currency=currency,
-            transaction_type=transaction_type,
-            status=status,
-            search=search,
-            amount_min=amount_min,
-            amount_max=amount_max,
-        )
-        # Keep empty section when user explicitly filtered to that currency.
-        if ccy or section["has_activity"]:
-            built.append(section)
-
-    if not built:
-        # No activity in either currency — empty AFN section for stable UI.
-        empty_ccy = ccy or AccountingAccount.Currency.AFN
-        built.append(
-            _ledger_section_for_currency(
-                kind=kind,
-                contact_id=contact_id,
-                date_from=date_from,
-                date_to=date_to,
-                currency=empty_ccy,
-                transaction_type=transaction_type,
-                status=status,
-                search=search,
-                amount_min=amount_min,
-                amount_max=amount_max,
-            )
-        )
-
-    multi = len(built) > 1
     page_number = _int_param(page, 1)
     page_size_number = min(_int_param(page_size, 25), 100)
-
-    sections_out = []
-    for section in built:
-        all_rows = section["lines"]
-        if multi:
-            # Show full per-currency ledgers (no mixed pagination).
-            page_rows = all_rows[:500]
-            pagination = {
-                "page": 1,
-                "page_size": len(page_rows) or page_size_number,
-                "total": len(all_rows),
-                "total_pages": 1,
-            }
-        else:
-            paginator = Paginator(all_rows, page_size_number)
-            try:
-                page_obj = paginator.page(page_number)
-            except EmptyPage:
-                page_obj = paginator.page(paginator.num_pages or 1)
-            page_rows = list(page_obj.object_list)
-            pagination = {
-                "page": page_obj.number,
-                "page_size": page_size_number,
-                "total": paginator.count,
-                "total_pages": paginator.num_pages,
-            }
-        sections_out.append(
-            {
-                "currency": section["currency"],
-                "opening_balance": section["opening_balance"],
-                "period_debit": section["period_debit"],
-                "period_credit": section["period_credit"],
-                "closing_balance": section["closing_balance"],
-                "current_balance": section["current_balance"],
-                "last_transaction_date": section["last_transaction_date"],
-                "all_line_count": section["all_line_count"],
-                "summary": section["summary"],
-                "pagination": pagination,
-                "lines": page_rows,
-            }
-        )
+    all_rows = section["lines"]
+    paginator = Paginator(all_rows, page_size_number)
+    try:
+        page_obj = paginator.page(page_number)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages or 1)
+    page_rows = list(page_obj.object_list)
+    pagination = {
+        "page": page_obj.number,
+        "page_size": page_size_number,
+        "total": paginator.count,
+        "total_pages": paginator.num_pages,
+    }
+    sections_out = [
+        {
+            "opening_balance": section["opening_balance"],
+            "period_debit": section["period_debit"],
+            "period_credit": section["period_credit"],
+            "closing_balance": section["closing_balance"],
+            "current_balance": section["current_balance"],
+            "last_transaction_date": section["last_transaction_date"],
+            "all_line_count": section["all_line_count"],
+            "summary": section["summary"],
+            "pagination": pagination,
+            "lines": page_rows,
+        }
+    ]
 
     primary = sections_out[0]
-    display_currency = "MIXED" if multi else primary["currency"]
 
     if kind == "customer":
         profile = (
@@ -800,20 +730,20 @@ def build_contact_ledger_payload(
                 Decimal(primary["closing_balance"]),
                 None,
             )
-            if contact and not multi
+            if contact
             else {
-                "name": contact.name if contact else "",
-                "contact": getattr(contact, "contact", "") if contact else "",
-                "address": getattr(contact, "address", "") if contact else "",
-                "opening_balance": primary["opening_balance"] if not multi else None,
-                "current_balance": primary["closing_balance"] if not multi else None,
-                "last_transaction_date": primary["last_transaction_date"] if not multi else "",
+                "name": "",
+                "contact": "",
+                "address": "",
+                "opening_balance": primary["opening_balance"],
+                "current_balance": primary["closing_balance"],
+                "last_transaction_date": primary["last_transaction_date"],
             }
         )
-        invoice_history = _sales_history(contact_id, date_from, date_to, ccy)
+        invoice_history = _sales_history(contact_id, date_from, date_to, "")
         purchase_history = []
         operational_payment_history = _customer_payment_history(
-            contact_id, date_from, date_to, ccy
+            contact_id, date_from, date_to, ""
         )
         txn_filter = CUSTOMER_TXN_FILTER
     else:
@@ -824,20 +754,20 @@ def build_contact_ledger_payload(
                 Decimal(primary["closing_balance"]),
                 None,
             )
-            if contact and not multi
+            if contact
             else {
-                "name": contact.name if contact else "",
-                "contact": getattr(contact, "contact", "") if contact else "",
-                "address": getattr(contact, "address", "") if contact else "",
-                "opening_balance": primary["opening_balance"] if not multi else None,
-                "current_balance": primary["closing_balance"] if not multi else None,
-                "last_transaction_date": primary["last_transaction_date"] if not multi else "",
+                "name": "",
+                "contact": "",
+                "address": "",
+                "opening_balance": primary["opening_balance"],
+                "current_balance": primary["closing_balance"],
+                "last_transaction_date": primary["last_transaction_date"],
             }
         )
         invoice_history = []
-        purchase_history = _purchase_history(contact_id, date_from, date_to, ccy)
+        purchase_history = _purchase_history(contact_id, date_from, date_to, "")
         operational_payment_history = _supplier_payment_history(
-            contact_id, date_from, date_to, ccy
+            contact_id, date_from, date_to, ""
         )
         txn_filter = SUPPLIER_TXN_FILTER
 
@@ -854,7 +784,6 @@ def build_contact_ledger_payload(
                     "reference": row["reference_no"] or row["voucher_no"],
                     "description": row["description"],
                     "created_by": row["created_by"],
-                    "currency": row["currency"],
                 }
             )
     gl_payment_history = gl_payment_history[:100]
@@ -869,17 +798,13 @@ def build_contact_ledger_payload(
         id_key: contact_id,
         "from": date_from,
         "to": date_to,
-        "currency": display_currency,
-        "currency_filter": ccy or None,
-        "multi_currency": multi,
         "sections": sections_out,
         "profile": profile,
-        # Flat fields kept for single-currency / backward compatibility.
-        "summary": primary["summary"] if not multi else {},
-        "opening_balance": primary["opening_balance"] if not multi else None,
-        "period_debit": primary["period_debit"] if not multi else None,
-        "period_credit": primary["period_credit"] if not multi else None,
-        "closing_balance": primary["closing_balance"] if not multi else None,
+        "summary": primary["summary"],
+        "opening_balance": primary["opening_balance"],
+        "period_debit": primary["period_debit"],
+        "period_credit": primary["period_credit"],
+        "closing_balance": primary["closing_balance"],
         "all_line_count": sum(s["all_line_count"] for s in sections_out),
         "pagination": primary["pagination"],
         "filters": {
@@ -889,7 +814,7 @@ def build_contact_ledger_payload(
             "amount_min": amount_min or "",
             "amount_max": amount_max or "",
         },
-        "lines": primary["lines"] if not multi else [],
+        "lines": primary["lines"],
         "invoice_history": invoice_history,
         "purchase_history": purchase_history,
         "payment_history": payment_history,

@@ -291,7 +291,7 @@
     "noPurchasesToday": "نن هیڅ پیرود نه دی ثبت شوی.",
     "collected": "راټول شوي",
     "accountingOverview": "د حسابدارۍ لنډیز",
-    "accountingOverviewHint": "شمېرې د ثبت شویو ژورنالونو څخه راځي. د حساب اسعار (AFN یا USD) غوره کړئ.",
+    "accountingOverviewHint": "شمېرې د ثبت شویو ژورنالونو څخه راځي. د حساب اسعار غوره کړئ.",
     "journalEntries": "ژورنال ثبتونه",
     "notBalanced": "مساوي نه دی",
     "netIncome": "خالص عاید",
@@ -462,8 +462,8 @@
     "remainingAmount": "پاتې مقدار",
     "customerCopy": "پیرودونکی کپی",
     "estimatedBill": "تخمینی فاکتور",
-    "usd": "دالر",
-    "afn": "افغانی",
+    "usd": "",
+    "afn": "",
     "meterAmount": "متر مقدار",
     "grainAmount": "دانه مقدار",
     "khadaAmount": "خاده مقدار",
@@ -1279,7 +1279,7 @@
     "reports": "راپورونه",
     "reportsSubtitle": "د مودې لنډیز او ازمایښتي توازن له عمومي کتاب څخه",
     "trialBalance": "ازمایښتی توازن",
-    "trialBalanceHint": "ټول مقدارونه د ټاکل شوي حساب اسعارو (AFN یا USD) کې.",
+    "trialBalanceHint": "ټول مقدارونه د ټاکل شوي حساب اسعارو کې.",
     "viewFullTrialBalance": "بشپړ ازمایښتی توازن",
     "openingDebit": "پرانیستنې ډیبټ",
     "openingCredit": "پرانیستنې کریډټ",
@@ -1307,8 +1307,8 @@
     "role": "رول",
     "addAccount": "حساب اضافه کړئ",
     "editAccount": "حساب سم کړئ",
-    "accountsSubtitle": "د حسابونو چارټ او مانډې ساتل (AFN او USD).",
-    "formSubtitle": "د حسابونو چارټ ثبت جوړ یا تازه کړئ (AFN یا USD)",
+    "accountsSubtitle": "د حسابونو چارټ او مانډې ساتل ( او )",
+    "formSubtitle": "د حسابونو چارټ ثبت جوړ یا تازه کړئ",
     "accountDetails": "د حساب جزئیات",
     "category": "کټګوري",
     "categories": {
@@ -1390,8 +1390,8 @@
     "creditTotal": "ټول کریډیټ",
     "account": "حساب",
     "lineMemo": "د کرښې یادونه",
-    "debit": "ډیبیټ (AFN)",
-    "credit": "کریډیټ (AFN)",
+    "debit": "ډیبیټ",
+    "credit": "کریډیټ",
     "customer": "پیرودونکی",
     "supplier": "عرضه کوونکی",
     "createSuccess": "د ژورنال ثبت په بریالیتوب جوړ شو",
@@ -1691,7 +1691,7 @@
     "ledgerTagAP": "د ورکړې حسابونه",
     "ledger": "لیجر",
     "registrationDate": "د نوم لیکنې نیټه",
-    "ledgerSubtitleHint": "د ورکړې حسابونو له کرښو بیلانس — په د هر حساب اسعارو کې (افغانۍ یا ډالر)."
+    "ledgerSubtitleHint": "د ورکړې حسابونو له کرښو بیلانس — په د هر حساب اسعارو کې (افغانۍ یا ډالر)"
   },
   "payroll": {
     "payrolls": "معاشات",
@@ -1884,7 +1884,7 @@
     "invoiceHistory": "د فاکتور تاریخچه",
     "ledgerTagAR": "د ترلاسه کېدو حسابونه",
     "ledger": "لیجر",
-    "ledgerSubtitleHint": "د ترلاسه کېدو حسابونو له کرښو بیلانس — په د هر حساب اسعارو کې (افغانۍ یا ډالر)."
+    "ledgerSubtitleHint": "د ترلاسه کېدو حسابونو له کرښو بیلانس — په د هر حساب اسعارو کې (افغانۍ یا ډالر)"
   },
   "category": {
     "title": "کټګورۍ",
