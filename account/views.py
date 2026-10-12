@@ -252,7 +252,7 @@ This OTP is valid for 10 minutes only.
 If you did not request a password reset, please ignore this email or contact support if you have concerns.
 
 Thank you,
-The Hasa Book Store Team
+The Poshak Habibi Team
         """
 
         # Send both HTML and plain text versions

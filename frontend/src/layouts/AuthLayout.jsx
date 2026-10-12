@@ -21,7 +21,9 @@ const AuthLayout = ({ children }) => {
         <div className="w-full min-w-0 max-w-md overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5 sm:p-10">
           <div className="mb-8 flex items-center justify-center gap-2">
             <Building2 className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">ERP</h1>
+            <h1 className="text-2xl font-bold text-primary">
+              {t("common.shortName", "Poshak Habibi")}
+            </h1>
           </div>
           <main dir={direction} className="min-w-0">
             {children}
@@ -29,8 +31,9 @@ const AuthLayout = ({ children }) => {
         </div>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Haji Nasrullah Jan Said Karamwal's
-          ERP. {t("common.allRightsReserved")}
+          &copy; {new Date().getFullYear()}{" "}
+          {t("common.nameProject", "Poshak Habibi")}.{" "}
+          {t("common.allRightsReserved")}
         </p>
       </div>
     </div>

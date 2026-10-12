@@ -374,8 +374,8 @@ export function printContactLedger({
   <div class="sheet">
     <header class="masthead">
       <div class="brand">
-        <h1>فروشگاه آهن آلات پسران حاجی نصرالله جان سید کرم وال</h1>
-        <p>عرضه کننده مواد تعمیراتی از قبیل آهن گادر، چادر، پروفیل، پتی، لارن، سیخ گول و غیره</p>
+        <h1>پوشاک حبیبی</h1>
+        <p>فروشگاه پوشاک — عرضه کننده انواع لباس مردانه، زنانه و بچه‌گانه</p>
       </div>
       <div class="doc-meta">
         <div class="doc-badge">${escapeHtml(title)}</div>

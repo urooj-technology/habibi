@@ -320,7 +320,7 @@ export function ReportDocument({
   className,
 }) {
   const { t } = useTranslation();
-  const company = t("operationalReports.companyTitle", "ERP");
+  const company = t("operationalReports.companyTitle", "Poshak Habibi");
 
   return (
     <Card

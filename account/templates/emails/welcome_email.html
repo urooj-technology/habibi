@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Welcome to BookStore</title>
+    <title>Welcome to Poshak Habibi</title>
     <style>
       /* Base styles */
       body {
@@ -136,10 +136,10 @@
       <div class="header">
         <img
           src="{{ frontend_url }}/logo.png"
-          alt="BookStore Logo"
+          alt="Poshak Habibi Logo"
           class="logo"
         />
-        <h1>Welcome to Hasa Book Store!</h1>
+        <h1>Welcome to Poshak Habibi!</h1>
       </div>
 
       <div class="content">
@@ -149,28 +149,17 @@
         </h2>
 
         <p>
-          Thank you for joining Hasa Book Store! We're excited to have you as a
-          {% if user.is_author %}author{% else %}reader{% endif %} in our
-          community.
+          Thank you for joining Poshak Habibi. Your account is ready for the
+          clothing shop workspace.
         </p>
 
-        {% if user.is_author %}
         <div class="features">
-          <h3>As an author, you can:</h3>
-          <div class="feature-item">Publish and manage your books</div>
-          <div class="feature-item">Track your sales and earnings</div>
-          <div class="feature-item">Engage with your readers</div>
-          <div class="feature-item">Access author analytics</div>
+          <h3>You can:</h3>
+          <div class="feature-item">Manage sales and purchases</div>
+          <div class="feature-item">Track inventory and stock</div>
+          <div class="feature-item">Follow customers and suppliers</div>
+          <div class="feature-item">Review accounting reports</div>
         </div>
-        {% else %}
-        <div class="features">
-          <h3>As a reader, you can:</h3>
-          <div class="feature-item">Access thousands of books</div>
-          <div class="feature-item">Create your personal library</div>
-          <div class="feature-item">Track your reading progress</div>
-          <div class="feature-item">Connect with authors</div>
-        </div>
-        {% endif %}
 
         <p>
           To get started, click the button below to sign in to your account:
@@ -187,19 +176,11 @@
           contact our support team.
         </p>
 
-        <p>Happy Reading!</p>
-        <p>The Hasa Book Store Team</p>
+        <p>The Poshak Habibi Team</p>
       </div>
 
       <div class="footer">
-        <div class="social-links">
-          <a href="https://www.facebook.com/share/1BsQLxJvwN/?mibextid=wwXIfr" class="social-link">Facebook</a>
-          <a href="https://x.com/hasabookstore?s=21&t=wP7EbJum52YKsFF6uZiLZg" class="social-link">X</a>
-          <a href="https://www.instagram.com/hassabookstore?igsh=eGh5NzJxZ25uYzR6&utm_source=qr" class="social-link">Instagram</a>
-          <a href="https://youtube.com/@hassacircle?si=grSdLi6WblZiep2C" class="social-link">YouTube</a>
-          <a href="https://www.tiktok.com/@hassa_books_store?_t=ZN-8uBrzXnOp1S&_r=1" class="social-link">TikTok</a>
-        </div>
-        <p>© {% now 'Y' %} Hasa Book Store. All rights reserved.</p>
+        <p>© {% now 'Y' %} Poshak Habibi. All rights reserved.</p>
         <p>This email was sent to {{ user.email }}</p>
       </div>
     </div>

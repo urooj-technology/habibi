@@ -98,12 +98,9 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
         <div style={s.brandBlock}>
           <div style={s.brandMark} />
           <div>
-            <h1 style={s.companyName}>
-              فروشگاه آهن آلات پسران حاجی نصرالله جان سید کرم وال
-            </h1>
+            <h1 style={s.companyName}>پوشاک حبیبی</h1>
             <p style={s.companyTag}>
-              عرضه کننده مواد تعمیراتی از قبیل آهن گادر، چادر، پروفیل، پتی، لارن،
-              سیخ گول و غیره
+              فروشگاه پوشاک — عرضه کننده انواع لباس مردانه، زنانه و بچه‌گانه
             </p>
           </div>
         </div>

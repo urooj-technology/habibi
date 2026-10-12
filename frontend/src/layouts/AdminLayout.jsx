@@ -240,12 +240,12 @@ const AdminLayoutContent = ({ children, direction, filteredMenuItems, isMenuActi
           <div className="flex min-w-0 items-center gap-2.5 px-0.5 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <img
               src="/image/Logo.png"
-              alt={t("common.shortName", "ERP")}
+              alt={t("common.shortName", "Poshak Habibi")}
               className="h-8 w-8 shrink-0 object-contain"
             />
             <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
               <p className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">
-                {t("common.shortName", "Haji Nasrullah ERP")}
+                {t("common.shortName", "Poshak Habibi")}
               </p>
               <p
                 className="truncate text-[11px] leading-tight text-muted-foreground"
@@ -413,7 +413,7 @@ const AdminLayoutContent = ({ children, direction, filteredMenuItems, isMenuActi
             {children}
             <footer className="mt-auto border-t border-border bg-muted/40 py-3 text-center text-xs text-muted-foreground sm:text-sm">
               © {new Date().getFullYear()} {"  "}
-              {t("common.shortName", "ERP")}
+              {t("common.shortName", "Poshak Habibi")}
               {"  "}
               {t("common.allRightsReserved")}
               {"  "}
