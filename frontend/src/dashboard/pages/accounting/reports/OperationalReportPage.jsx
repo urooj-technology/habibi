@@ -28,7 +28,6 @@ import {
   ReportPeriodField,
   ReportDateField,
   ReportSelectField,
-  ReportCurrencyField,
   ReportAutocompleteField,
   ReportBalanceStrip,
   ReportKeyValueTable,
@@ -75,12 +74,8 @@ const OperationalReportPage = () => {
   );
   const bankAccounts = useMemo(() => {
     const arr = Array.isArray(accountsData) ? accountsData : accountsData?.results || [];
-    const cashAndBank = arr.filter((a) => a.role === "BANK" || a.role === "CASH");
-    if (config?.filters.includes("currency") && filters.currency) {
-      return cashAndBank.filter((a) => a.currency === filters.currency);
-    }
-    return cashAndBank;
-  }, [accountsData, config?.filters, filters.currency]);
+    return arr.filter((a) => a.role === "BANK" || a.role === "CASH");
+  }, [accountsData]);
 
   const needsEmployee = config?.filters.includes("employee") && !filters.employee_id;
   const needsAccount = config?.filters.includes("bankAccount") && !filters.account_id;
@@ -170,10 +165,6 @@ const OperationalReportPage = () => {
   }
 
   const rows = config.dataKey && data ? data[config.dataKey] || [] : [];
-  // Prefer API currency; do not invent AFN for multi-currency journals.
-  const currency =
-    data?.currency ||
-    (config.filters.includes("currency") ? filters.currency : null);
   const tableColumns = config.columns?.map((col) => ({ ...col, label: t(col.label) })) || [];
 
   const renderCell = (row, col) => {
@@ -182,8 +173,7 @@ const OperationalReportPage = () => {
       return t(`operationalReports.buckets.${val}`, val);
     }
     if (col.money && val != null) {
-      const lineCcy = row.currency || (currency && currency !== "MIXED" ? currency : null);
-      return formatReportMoney(val, lineCcy || "");
+      return formatReportMoney(val, "");
     }
     return val ?? "—";
   };
@@ -200,11 +190,11 @@ const OperationalReportPage = () => {
       return [
         {
           label: t("accounting.openingBalance"),
-          value: formatReportMoney(data.opening_balance, data.currency),
+          value: formatReportMoney(data.opening_balance, ""),
         },
         {
           label: t("accounting.closingBalance"),
-          value: formatReportMoney(data.closing_balance, data.currency),
+          value: formatReportMoney(data.closing_balance, ""),
         },
         {
           label: t("operationalReports.bankAccount"),
@@ -215,14 +205,14 @@ const OperationalReportPage = () => {
     if (config.summaryType === "agingTotals" && data.totals) {
       return Object.entries(data.totals).map(([key, val]) => ({
         label: t(`operationalReports.buckets.${key}`, key),
-        value: formatReportMoney(val, currency),
+        value: formatReportMoney(val, ""),
       }));
     }
     if (config.totalField && data[config.totalField] != null) {
       return [
         {
           label: t("common.total"),
-          value: formatReportMoney(data[config.totalField], currency),
+          value: formatReportMoney(data[config.totalField], ""),
         },
       ];
     }
@@ -243,14 +233,6 @@ const OperationalReportPage = () => {
 
   const metaLines = [];
   if (periodLabel) metaLines.push({ label: t("common.period", "Period"), value: periodLabel });
-  if (currency && currency !== "MIXED") {
-    metaLines.push({ label: t("common.currency"), value: currency });
-  } else if (currency === "MIXED" || rows.some((r) => r.currency)) {
-    metaLines.push({
-      label: t("common.currency"),
-      value: t("operationalReports.mixedCurrency", "Mixed (per line)"),
-    });
-  }
   if (runKey > 0 && data && config.displayType !== "summary" && !isFinancialStatement) {
     metaLines.push({
       label: t("operationalReports.rows", "Rows"),
@@ -374,7 +356,7 @@ const OperationalReportPage = () => {
       metaLines,
       balanceItems: buildBalanceItems(),
       displayType: config.displayType,
-      currency,
+      currency: "",
       columns: tableColumns,
       rows,
       summaryRows: summaryKvRows,
@@ -382,7 +364,7 @@ const OperationalReportPage = () => {
       financialFooterRows,
       balanced: config.displayType === "balanceSheet" ? data.is_balanced : undefined,
       unbalancedLabel: t("operationalReports.balanceSheetUnbalanced"),
-      formatMoney: (v, ccy) => formatReportMoney(v, ccy || ""),
+      formatMoney: (v) => formatReportMoney(v, ""),
       translateBucket: (val) => t(`operationalReports.buckets.${val}`, val),
     });
   };
@@ -446,9 +428,6 @@ const OperationalReportPage = () => {
             value={filters.as_of}
             onChange={handleChange}
           />
-        ) : null}
-        {config.filters.includes("currency") ? (
-          <ReportCurrencyField value={filters.currency} onChange={handleChange} />
         ) : null}
         {config.filters.includes("agingKind") ? (
           <ReportSelectField
@@ -522,11 +501,11 @@ const OperationalReportPage = () => {
           {balanceItems.length > 0 ? <ReportBalanceStrip items={balanceItems} /> : null}
 
           {config.displayType === "summary" ? (
-            <ReportKeyValueTable rows={summaryKvRows} currency={currency} />
+            <ReportKeyValueTable rows={summaryKvRows} currency="" />
           ) : isFinancialStatement ? (
             <ReportFinancialStatement
               sections={financialSections}
-              currency={currency}
+              currency=""
               footerRows={financialFooterRows}
               balanced={config.displayType === "balanceSheet" ? data.is_balanced : undefined}
             />
@@ -535,7 +514,7 @@ const OperationalReportPage = () => {
               columns={tableColumns}
               rows={rows}
               renderCell={renderCell}
-              currency={currency}
+              currency=""
               showSearch={rows.length > 12}
             />
           )}

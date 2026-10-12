@@ -149,7 +149,7 @@ const AccountsIndex = () => {
       <MoneyAmount
         value={value}
         side={side}
-        currency={row?.currency || ""}
+        currency=""
         showZero
         empty="0.00"
       />

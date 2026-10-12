@@ -115,13 +115,12 @@ const ExtendedDocumentIndex = ({ config }) => {
     const formatted = { ...row };
     listColumns.forEach((col) => {
       if (MONEY_COLUMNS.has(col.id) && row[col.id] != null) {
-        const ccy = row.currency || "AFN";
         if (col.id === "debit_amount") {
           formatted[col.id] = (
             <MoneyAmount
               value={row[col.id]}
               side={MONEY_SIDE.DEBIT}
-              currency={ccy}
+              currency=""
               showZero
             />
           );
@@ -130,12 +129,12 @@ const ExtendedDocumentIndex = ({ config }) => {
             <MoneyAmount
               value={row[col.id]}
               side={MONEY_SIDE.CREDIT}
-              currency={ccy}
+              currency=""
               showZero
             />
           );
         } else {
-          formatted[col.id] = formatCurrency(row[col.id], ccy);
+          formatted[col.id] = formatCurrency(row[col.id], "");
         }
       }
     });

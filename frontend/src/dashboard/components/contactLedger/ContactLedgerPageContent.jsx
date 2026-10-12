@@ -66,6 +66,7 @@ const bodyCellClass = "px-3 py-2 text-sm";
 
 /**
  * Shared ERP-style layout for customer & supplier ledger pages.
+ * currencyFilter / onCurrencyFilterChange accepted for parent compat but unused.
  */
 export default function ContactLedgerPageContent({
   t,
@@ -88,8 +89,8 @@ export default function ContactLedgerPageContent({
   downloadExport,
   handleRefresh,
   ledgerVariant,
-  currencyFilter,
-  onCurrencyFilterChange,
+  currencyFilter: _currencyFilter,
+  onCurrencyFilterChange: _onCurrencyFilterChange,
   search,
   setSearch,
   transactionType,
@@ -116,66 +117,66 @@ export default function ContactLedgerPageContent({
   const labelTxn = (type) => t(TXN_LABEL_KEYS[type] || `ledger.txn.${type}`, type);
   const labelStatus = (value) => t(STATUS_LABEL_KEYS[value] || `ledger.status.${value}`, value || "—");
 
-  /** Per-currency sections when All is selected; otherwise one section. */
-  const currencySections = useMemo(() => {
-    if (!ledgerData) return [];
+  /** Single ledger section — flatten any legacy multi-currency sections. */
+  const ledgerSection = useMemo(() => {
+    if (!ledgerData) return null;
     if (Array.isArray(ledgerData.sections) && ledgerData.sections.length > 0) {
-      return ledgerData.sections;
+      if (ledgerData.sections.length === 1) {
+        return ledgerData.sections[0];
+      }
+      const lines = ledgerData.sections.flatMap((s) => s.lines || []);
+      return {
+        opening_balance: ledgerData.opening_balance ?? ledgerData.sections[0]?.opening_balance,
+        period_debit: ledgerData.period_debit ?? ledgerData.sections.reduce((s, sec) => s + Number(sec.period_debit || 0), 0),
+        period_credit: ledgerData.period_credit ?? ledgerData.sections.reduce((s, sec) => s + Number(sec.period_credit || 0), 0),
+        closing_balance: ledgerData.closing_balance ?? ledgerData.sections[ledgerData.sections.length - 1]?.closing_balance,
+        current_balance: ledgerData.closing_balance ?? ledgerData.sections[ledgerData.sections.length - 1]?.closing_balance,
+        summary: ledgerData.summary || ledgerData.sections[0]?.summary || {},
+        pagination: ledgerData.pagination || ledgerData.sections[0]?.pagination || {},
+        lines,
+      };
     }
-    return [
-      {
-        currency: ledgerData.currency && ledgerData.currency !== "MIXED"
-          ? ledgerData.currency
-          : currencyFilter || "AFN",
-        opening_balance: ledgerData.opening_balance,
-        period_debit: ledgerData.period_debit,
-        period_credit: ledgerData.period_credit,
-        closing_balance: ledgerData.closing_balance,
-        current_balance: ledgerData.closing_balance,
-        summary: ledgerData.summary || {},
-        pagination: ledgerData.pagination || {},
-        lines: ledgerData.lines || [],
-      },
-    ];
-  }, [ledgerData, currencyFilter]);
-
-  const isMultiCurrency = currencySections.length > 1;
-  const primarySection = currencySections[0] || null;
-  const displayCurrency = isMultiCurrency
-    ? null
-    : primarySection?.currency || currencyFilter || "—";
-  const amountSuffix =
-    displayCurrency && displayCurrency !== "—" ? ` ${displayCurrency}` : "";
+    return {
+      opening_balance: ledgerData.opening_balance,
+      period_debit: ledgerData.period_debit,
+      period_credit: ledgerData.period_credit,
+      closing_balance: ledgerData.closing_balance,
+      current_balance: ledgerData.closing_balance,
+      summary: ledgerData.summary || {},
+      pagination: ledgerData.pagination || {},
+      lines: ledgerData.lines || [],
+    };
+  }, [ledgerData]);
 
   const profile = ledgerData?.profile || {};
-  const summary = (!isMultiCurrency && primarySection?.summary) || ledgerData?.summary || {};
+  const summary = ledgerSection?.summary || ledgerData?.summary || {};
   const availableTypes = ledgerData?.available_transaction_types || [];
   const availableStatuses = ledgerData?.available_statuses || [];
-  const pagination = primarySection?.pagination || ledgerData?.pagination || {};
+  const pagination = ledgerSection?.pagination || ledgerData?.pagination || {};
   const histories =
     ledgerVariant === "customer" ? ledgerData?.invoice_history || [] : ledgerData?.purchase_history || [];
   const payments = ledgerData?.payment_history || [];
 
-  const balanceItems = !isMultiCurrency && primarySection
+  const balanceItems = ledgerSection
     ? [
         {
           label: t("accounting.openingBalance", "Opening balance"),
-          value: `${formatDecimal(primarySection.opening_balance)}${amountSuffix}`,
+          value: formatDecimal(ledgerSection.opening_balance),
           tone: "balance",
         },
         {
           label: t("accounting.totalDebit", "Total debit"),
-          value: `${formatDecimal(primarySection.period_debit)}${amountSuffix}`,
+          value: formatDecimal(ledgerSection.period_debit),
           tone: "debit",
         },
         {
           label: t("accounting.totalCredit", "Total credit"),
-          value: `${formatDecimal(primarySection.period_credit)}${amountSuffix}`,
+          value: formatDecimal(ledgerSection.period_credit),
           tone: "credit",
         },
         {
           label: t("accounting.closingBalance", "Closing balance"),
-          value: `${formatDecimal(primarySection.closing_balance)}${amountSuffix}`,
+          value: formatDecimal(ledgerSection.closing_balance),
           tone: "balance",
         },
       ]
@@ -203,7 +204,7 @@ export default function ContactLedgerPageContent({
   const hasResult = Boolean(ledgerData);
 
   const handlePrint = () => {
-    if (!ledgerData || !currencySections.length) return;
+    if (!ledgerData || !ledgerSection) return;
     printContactLedger({
       title: t(pageTitleKey, pageTitleDefault),
       contactLabel:
@@ -215,7 +216,7 @@ export default function ContactLedgerPageContent({
       profile,
       from,
       to,
-      sections: currencySections,
+      sections: [ledgerSection],
       labelTxn,
       labelStatus,
     });
@@ -230,8 +231,7 @@ export default function ContactLedgerPageContent({
   };
 
   const renderLedgerTable = (section) => {
-    const lines = section.lines || [];
-    const ccy = section.currency || "";
+    const lines = section?.lines || [];
     return (
       <div className={cn("max-h-[560px] overflow-auto [@media_print]:max-h-none", loading && ledgerData ? "opacity-70" : "")}>
         <table className="w-full text-sm">
@@ -244,15 +244,12 @@ export default function ContactLedgerPageContent({
               <th className={headCellClass}>{t("journal.lineMemo", "Description")}</th>
               <th className={cn(headCellClass, "text-right", moneySideHeaderClass(MONEY_SIDE.DEBIT))}>
                 {t("journal.debit", "Debit")}
-                {ccy ? ` (${ccy})` : ""}
               </th>
               <th className={cn(headCellClass, "text-right", moneySideHeaderClass(MONEY_SIDE.CREDIT))}>
                 {t("journal.credit", "Credit")}
-                {ccy ? ` (${ccy})` : ""}
               </th>
               <th className={cn(headCellClass, "text-right")}>
                 {t("accounting.runningBalance", "Balance")}
-                {ccy ? ` (${ccy})` : ""}
               </th>
               <th className={headCellClass}>{t("ledger.createdBy", "Created By")}</th>
               <th className={headCellClass}>{t("common.status", "Status")}</th>
@@ -266,8 +263,8 @@ export default function ContactLedgerPageContent({
                 </td>
               </tr>
             ) : lines.length > 0 ? (
-              lines.map((line) => (
-                <tr key={`${ccy}-${line.id}`} className="border-t border-border hover:bg-muted/40">
+              lines.map((line, idx) => (
+                <tr key={line.id ?? idx} className="border-t border-border hover:bg-muted/40">
                   <td className={cn(bodyCellClass, "whitespace-nowrap")}>{line.date || line.entry_date}</td>
                   <td className={bodyCellClass}>{line.voucher_no || line.reference || "—"}</td>
                   <td className={bodyCellClass}>{line.reference_no || line.reference || "—"}</td>
@@ -398,18 +395,6 @@ export default function ContactLedgerPageContent({
               </div>
             }
           >
-            <PosField label={t("accounting.filterByCurrency", "Currency")}>
-              <Select value={currencyFilter || "ALL"} onValueChange={(v) => onCurrencyFilterChange(v === "ALL" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("accounting.filterByCurrency", "Currency")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">{t("accounting.currencyAll", "All (AFN & USD)")}</SelectItem>
-                  <SelectItem value="AFN">AFN</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </PosField>
             <PosField label={t("common.from", "From")}>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </PosField>
@@ -495,131 +480,66 @@ export default function ContactLedgerPageContent({
           {loading && !ledgerData ? <ReportLoadingState /> : null}
 
           {ledgerData || loading ? (
-            isMultiCurrency ? (
-              <div className={cn("space-y-4", loading && ledgerData ? "opacity-70" : "")}>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    "ledger.multiCurrencyHint",
-                    "AFN and USD are shown in separate ledgers so balances are not mixed."
-                  )}
-                </p>
-                {currencySections.map((section) => {
-                  const ccy = section.currency || "";
-                  const lineCount = section.lines?.length || 0;
-                  return (
-                    <PosItems
-                      key={ccy}
-                      title={`${t("ledger.ledgerEntries", "Ledger entries")} — ${ccy}`}
-                      count={lineCount}
-                    >
-                      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-2 text-xs sm:grid-cols-4">
-                        <div>
-                          <p className="text-muted-foreground">{t("accounting.openingBalance", "Opening balance")}</p>
-                          <p className="font-semibold tabular-nums">
-                            {formatDecimal(section.opening_balance)} {ccy}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">{t("accounting.totalDebit", "Total debit")}</p>
-                          <p>
-                            <MoneyAmount
-                              value={section.period_debit}
-                              side={MONEY_SIDE.DEBIT}
-                              currency={ccy}
-                              showZero
-                            />
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">{t("accounting.totalCredit", "Total credit")}</p>
-                          <p>
-                            <MoneyAmount
-                              value={section.period_credit}
-                              side={MONEY_SIDE.CREDIT}
-                              currency={ccy}
-                              showZero
-                            />
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">{t("accounting.closingBalance", "Closing balance")}</p>
-                          <p className="font-semibold tabular-nums">
-                            {formatDecimal(section.closing_balance)} {ccy}
-                          </p>
-                        </div>
-                      </div>
-                      {renderLedgerTable(section)}
-                    </PosItems>
-                  );
-                })}
-              </div>
-            ) : (
-              <PosItems
-                title={t("ledger.ledgerEntries", "Ledger entries")}
-                count={primarySection?.lines?.length || 0}
-              >
-                {renderLedgerTable(
-                  primarySection || {
-                    currency: displayCurrency,
-                    lines: [],
-                  }
-                )}
+            <PosItems
+              title={t("ledger.ledgerEntries", "Ledger entries")}
+              count={ledgerSection?.lines?.length || 0}
+            >
+              {renderLedgerTable(ledgerSection || { lines: [] })}
 
-                {ledgerData ? (
-                  <div className="no-print flex flex-col items-center justify-between gap-2 border-t border-border px-4 py-3 sm:flex-row">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{t("common.rowsPerPage", "Rows per page")}:</span>
-                      <Select
-                        value={String(pageSize)}
-                        onValueChange={(v) => {
-                          setPage(0);
-                          setPageSize(Number(v));
-                        }}
+              {ledgerData ? (
+                <div className="no-print flex flex-col items-center justify-between gap-2 border-t border-border px-4 py-3 sm:flex-row">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{t("common.rowsPerPage", "Rows per page")}:</span>
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        setPage(0);
+                        setPageSize(Number(v));
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[80px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 25, 50, 100].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span>
+                      {currentPage * pageSize + 1}
+                      {"–"}
+                      {Math.min((currentPage + 1) * pageSize, totalCount)} {t("common.of", "of")}{" "}
+                      {totalCount}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={currentPage <= 0}
+                        onClick={() => setPage(currentPage - 1)}
                       >
-                        <SelectTrigger className="h-8 w-[80px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[10, 25, 50, 100].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span>
-                        {currentPage * pageSize + 1}
-                        {"–"}
-                        {Math.min((currentPage + 1) * pageSize, totalCount)} {t("common.of", "of")}{" "}
-                        {totalCount}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={currentPage <= 0}
-                          onClick={() => setPage(currentPage - 1)}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={currentPage + 1 >= totalPages}
-                          onClick={() => setPage(currentPage + 1)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={currentPage + 1 >= totalPages}
+                        onClick={() => setPage(currentPage + 1)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                ) : null}
-              </PosItems>
-            )
+                </div>
+              ) : null}
+            </PosItems>
           ) : null}
 
           {ledgerData ? (
@@ -642,9 +562,6 @@ export default function ContactLedgerPageContent({
                     <th className={headCellClass}>{t("ledger.products", "Products")}</th>
                     <th className={headCellClass}>{t("ledger.qty", "Qty")}</th>
                     <th className={cn(headCellClass, "text-right")}>{t("common.total", "Total")}</th>
-                    {isMultiCurrency ? (
-                      <th className={headCellClass}>{t("common.currency", "Currency")}</th>
-                    ) : null}
                     <th className={headCellClass}>{t("common.status", "Status")}</th>
                     <th className={headCellClass}>{t("common.date", "Date")}</th>
                   </tr>
@@ -658,11 +575,7 @@ export default function ContactLedgerPageContent({
                         <td className={bodyCellClass}>{row.qty}</td>
                         <td className={cn(bodyCellClass, "text-right font-semibold tabular-nums")}>
                           {formatDecimal(row.total)}
-                          {row.currency ? ` ${row.currency}` : ""}
                         </td>
-                        {isMultiCurrency ? (
-                          <td className={bodyCellClass}>{row.currency || "—"}</td>
-                        ) : null}
                         <td className={bodyCellClass}>
                           <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-semibold", statusClass(row.status))}>
                             {labelStatus(row.status)}
@@ -673,7 +586,7 @@ export default function ContactLedgerPageContent({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isMultiCurrency ? 7 : 6} className="py-3 text-center text-sm text-muted-foreground">
+                      <td colSpan={6} className="py-3 text-center text-sm text-muted-foreground">
                         {t("common.noData", "No data")}
                       </td>
                     </tr>
@@ -693,9 +606,6 @@ export default function ContactLedgerPageContent({
                     <th className={headCellClass}>{t("ledger.paymentDate", "Payment Date")}</th>
                     <th className={headCellClass}>{t("journal.reference", "Reference")}</th>
                     <th className={cn(headCellClass, "text-right")}>{t("reports.amount", "Amount")}</th>
-                    {isMultiCurrency ? (
-                      <th className={headCellClass}>{t("common.currency", "Currency")}</th>
-                    ) : null}
                     <th className={headCellClass}>{t("ledger.createdBy", "Created By")}</th>
                     <th className={headCellClass}>{t("journal.lineMemo", "Description")}</th>
                   </tr>
@@ -708,18 +618,14 @@ export default function ContactLedgerPageContent({
                         <td className={bodyCellClass}>{row.reference || "—"}</td>
                         <td className={cn(bodyCellClass, "text-right font-semibold tabular-nums")}>
                           {formatDecimal(row.amount)}
-                          {row.currency ? ` ${row.currency}` : ""}
                         </td>
-                        {isMultiCurrency ? (
-                          <td className={bodyCellClass}>{row.currency || "—"}</td>
-                        ) : null}
                         <td className={bodyCellClass}>{row.created_by || "—"}</td>
                         <td className={bodyCellClass}>{row.description || "—"}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={isMultiCurrency ? 6 : 5} className="py-3 text-center text-sm text-muted-foreground">
+                      <td colSpan={5} className="py-3 text-center text-sm text-muted-foreground">
                         {t("common.noData", "No data")}
                       </td>
                     </tr>
@@ -743,90 +649,34 @@ export default function ContactLedgerPageContent({
               {from && to ? `${from} — ${to}` : "…"}
             </div>
           </PosField>
-          {isMultiCurrency ? (
-            currencySections.map((section) => {
-              const ccy = section.currency || "";
-              const sectionSummary = section.summary || {};
-              const sectionSummaryItems =
-                ledgerVariant === "customer"
-                  ? [
-                      [t("ledger.totalSales", "Total Sales"), sectionSummary.total_sales],
-                      [
-                        t("ledger.totalPaymentsReceived", "Total Payments Received"),
-                        sectionSummary.total_payments_received,
-                      ],
-                      [t("ledger.outstandingBalance", "Outstanding Balance"), sectionSummary.outstanding_balance],
-                      [t("ledger.advanceBalance", "Advance Balance"), sectionSummary.advance_balance],
-                      [t("ledger.totalReturns", "Total Returns"), sectionSummary.total_returns],
-                    ]
-                  : [
-                      [t("ledger.totalPurchases", "Total Purchases"), sectionSummary.total_purchases],
-                      [t("ledger.totalPayments", "Total Payments"), sectionSummary.total_payments],
-                      [t("ledger.outstandingBalance", "Outstanding Balance"), sectionSummary.outstanding_balance],
-                      [t("ledger.advancePaid", "Advance Paid"), sectionSummary.advance_paid],
-                    ];
-              return (
-                <div key={ccy} className="space-y-1 border-t border-border pt-2 first:border-t-0 first:pt-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {ccy}
-                  </p>
-                  <PosTotalRow
-                    label={t("accounting.openingBalance", "Opening balance")}
-                    value={`${formatDecimal(section.opening_balance)} ${ccy}`}
-                  />
-                  <PosTotalRow
-                    label={t("accounting.closingBalance", "Closing balance")}
-                    value={`${formatDecimal(section.closing_balance)} ${ccy}`}
-                  />
-                  {sectionSummaryItems
-                    .filter(([, value]) => value != null && value !== "")
-                    .map(([label, value]) => (
-                      <PosTotalRow
-                        key={`${ccy}-${label}`}
-                        label={label}
-                        value={`${formatDecimal(value)} ${ccy}`}
-                      />
-                    ))}
-                  <PosTotalRow
-                    label={t("accounting.currentBalance", "Current Balance")}
-                    value={`${formatDecimal(section.current_balance ?? section.closing_balance)} ${ccy}`}
-                    emphasize
-                  />
-                </div>
-              );
-            })
-          ) : (
-            <>
-              {balanceItems.map((item) => (
-                <PosTotalRow
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  tone={item.tone}
-                />
-              ))}
-              {summaryItems
-                .filter(([, value]) => value != null && value !== "")
-                .map(([label, value]) => (
-                  <PosTotalRow key={label} label={label} value={`${formatDecimal(value)}${amountSuffix}`} />
-                ))}
-              <PosTotalRow
-                label={t("accounting.currentBalance", "Current Balance")}
-                value={`${formatDecimal(profile.current_balance)}${amountSuffix}`}
-                emphasize
-              />
-              <div className="border-t border-border pt-2">
-                <p className="text-[10px] text-muted-foreground">
-                  {t("common.rowsPerPage", "Rows per page")}: {pageSize}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {currentPage * pageSize + 1}
-                  {"–"}
-                  {Math.min((currentPage + 1) * pageSize, totalCount)} {t("common.of", "of")} {totalCount}
-                </p>
-              </div>
-            </>
-          )}
+          {balanceItems.map((item) => (
+            <PosTotalRow
+              key={item.label}
+              label={item.label}
+              value={item.value}
+              tone={item.tone}
+            />
+          ))}
+          {summaryItems
+            .filter(([, value]) => value != null && value !== "")
+            .map(([label, value]) => (
+              <PosTotalRow key={label} label={label} value={formatDecimal(value)} />
+            ))}
+          <PosTotalRow
+            label={t("accounting.currentBalance", "Current Balance")}
+            value={formatDecimal(profile.current_balance)}
+            emphasize
+          />
+          <div className="border-t border-border pt-2">
+            <p className="text-[10px] text-muted-foreground">
+              {t("common.rowsPerPage", "Rows per page")}: {pageSize}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {currentPage * pageSize + 1}
+              {"–"}
+              {Math.min((currentPage + 1) * pageSize, totalCount)} {t("common.of", "of")} {totalCount}
+            </p>
+          </div>
         </PosSummary>
       </PosBody>
     </PosShell>

@@ -1,10 +1,10 @@
 /**
- * Format a money amount. Defaults to AFN label; pass empty string for number-only.
+ * Format a money amount. Defaults to number-only (no currency code).
  * @param {number|string} amount
- * @param {string} [currencyCode='AFN'] - Currency label prefixed; use '' for bare number
+ * @param {string} [currencyCode=''] - Optional currency label prefixed
  * @returns {string}
  */
-export const formatCurrency = (amount, currencyCode = "AFN") => {
+export const formatCurrency = (amount, currencyCode = "") => {
   if (amount === undefined || amount === null || amount === "") return "-";
 
   const numericAmount =

@@ -17,7 +17,6 @@ import { FormShell, FormBody, FormGrid, FormSection, FormRow } from "../../../co
 import {
   ACCOUNT_TYPES,
   ROLE_OPTIONS,
-  CURRENCY_OPTIONS,
   CATEGORY_OPTIONS,
   CATEGORIES_BY_TYPE,
 } from "./accountFormOptions";
@@ -93,7 +92,7 @@ const EditAccountingAccount = () => {
     return {
       code: formData.code.trim(),
       name: formData.name.trim(),
-      currency: formData.currency || "AFN",
+      currency: "AFN",
       account_type: formData.account_type,
       category: formData.category || "",
       role: formData.role || "",
@@ -113,9 +112,6 @@ const EditAccountingAccount = () => {
     }
     if (!payload.account_type) {
       errors.push(t("accounting.validation.accountTypeRequired"));
-    }
-    if (!["AFN", "USD"].includes(payload.currency)) {
-      errors.push(t("accounting.validation.currencyRequired", "Currency is required"));
     }
     return errors;
   }, [payload, t]);
@@ -143,8 +139,8 @@ const EditAccountingAccount = () => {
       .filter((acc) => String(acc.id) !== String(id))
       .map((acc) => ({
         value: String(acc.id),
-        label: `${acc.code} - ${acc.name} (${acc.currency || "AFN"})`,
-        customLabel: `${acc.code} - ${acc.name} (${acc.currency || "AFN"})`,
+        label: `${acc.code} - ${acc.name}`,
+        customLabel: `${acc.code} - ${acc.name}`,
       })),
   ];
 
@@ -172,7 +168,7 @@ const EditAccountingAccount = () => {
         title={t("accounting.editAccount", "Edit Account")}
         subtitle={t(
           "accounting.formSubtitle",
-          "Create a chart of accounts entry (AFN or USD)"
+          "Create a chart of accounts entry"
         )}
         backButton="/app/accounting/accounts"
         backButtonLabel={t("common.backToList", "Back to list")}
@@ -223,7 +219,7 @@ const EditAccountingAccount = () => {
             title={t("accounting.accountDetails", "Account details")}
             description={t(
               "accounting.formSubtitle",
-              "Create a chart of accounts entry (AFN or USD)"
+              "Create a chart of accounts entry"
             )}
             actions={
               <Button
@@ -257,16 +253,6 @@ const EditAccountingAccount = () => {
             </FormRow>
             <FormRow cols={2}>
               <FormSelectField
-                name="currency"
-                label="accounting.filterByCurrency"
-                value={formData.currency}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, currency: e.target.value }))
-                }
-                options={CURRENCY_OPTIONS}
-                required
-              />
-              <FormSelectField
                 name="account_type"
                 label="accounting.accountType"
                 value={formData.account_type}
@@ -274,8 +260,6 @@ const EditAccountingAccount = () => {
                 options={ACCOUNT_TYPES}
                 required
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="category"
                 label="accounting.category"
@@ -285,6 +269,8 @@ const EditAccountingAccount = () => {
                 }
                 options={categorySelectOptions}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="role"
                 label="accounting.role"
@@ -292,8 +278,6 @@ const EditAccountingAccount = () => {
                 onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
                 options={ROLE_OPTIONS}
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="parent"
                 label="accounting.parent"
@@ -308,6 +292,8 @@ const EditAccountingAccount = () => {
                 options={parentSelectOptions}
                 disabled={parentLoading}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="is_active"
                 label="common.status"

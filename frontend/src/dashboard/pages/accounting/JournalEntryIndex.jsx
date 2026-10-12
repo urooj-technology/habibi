@@ -63,7 +63,7 @@ const JournalEntryIndex = () => {
       },
       {
         id: "total_debit_home",
-        label: `${t("journal.debit")} (AFN)`,
+        label: t("journal.debit", "Debit"),
         minWidth: 140,
         align: "right",
         sortable: true,
@@ -73,7 +73,7 @@ const JournalEntryIndex = () => {
       },
       {
         id: "total_credit_home",
-        label: `${t("journal.credit")} (AFN)`,
+        label: t("journal.credit", "Credit"),
         minWidth: 140,
         align: "right",
         sortable: true,

@@ -22,33 +22,27 @@ def _d(v) -> Decimal:
     return Decimal(v or 0)
 
 
-def build_daily_ops_dashboard(*, currency: str = "AFN", days: int = 14) -> dict:
+def build_daily_ops_dashboard(*, days: int = 14) -> dict:
     """
     Operational snapshot for the home dashboard.
 
     Sales KPIs are net of sales returns. Collections are cash in minus cash refunds.
     """
-    currency = (currency or "AFN").upper()
-    if currency not in ("AFN", "USD"):
-        currency = "AFN"
     days = max(7, min(int(days or 14), 31))
 
     today = timezone.localdate()
     start = today - timedelta(days=days - 1)
 
     sales = Sale.objects.filter(
-        currency=currency,
         sale_date__date__gte=start,
         sale_date__date__lte=today,
     )
     returns = SaleReturn.objects.filter(
         is_deleted=False,
-        currency=currency,
         return_date__date__gte=start,
         return_date__date__lte=today,
     )
     purchases = Purchase.objects.filter(
-        currency=currency,
         purchase_date__gte=start,
         purchase_date__lte=today,
     )
@@ -112,8 +106,7 @@ def build_daily_ops_dashboard(*, currency: str = "AFN", days: int = 14) -> dict:
     }
     purchases_by_day = {
         r["purchase_date"]: r
-        for r in purchases.values("purchase_date")
-        .annotate(
+        for r in purchases.values("purchase_date").annotate(
             purchases=Sum("total_amount"),
             payments=Sum("received_amount"),
             bills=Count("id"),
@@ -143,7 +136,6 @@ def build_daily_ops_dashboard(*, currency: str = "AFN", days: int = 14) -> dict:
             }
         )
 
-    # Net sales by customer (gross − returns)
     sales_by_customer = {
         r["customer_id"]: {
             "name": r["customer__name"] or "—",
@@ -222,7 +214,6 @@ def build_daily_ops_dashboard(*, currency: str = "AFN", days: int = 14) -> dict:
         "as_of": today.isoformat(),
         "from": start.isoformat(),
         "to": today.isoformat(),
-        "currency": currency,
         "days": days,
         "today": {
             "sales_total": _money(today_net_sales),

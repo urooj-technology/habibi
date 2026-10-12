@@ -32,7 +32,6 @@ import {
   formatReportMoney,
   ReportFilterGrid,
   ReportDateField,
-  ReportCurrencyField,
   reportFilterControlClass,
 } from "../../pages/accounting/reports/reportUi";
 import { printTrialBalance } from "./printTrialBalance";
@@ -110,14 +109,13 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
   const auth = useAuth();
   const token = auth?.user?.token;
   const [{ from, to }, setRange] = useState(defaultRange);
-  const [currency, setCurrency] = useState("AFN");
   const [trial, setTrial] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const qs = useMemo(
-    () => new URLSearchParams({ from, to, currency }).toString(),
-    [from, to, currency]
+    () => new URLSearchParams({ from, to }).toString(),
+    [from, to]
   );
 
   const load = useCallback(async () => {
@@ -174,7 +172,6 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
     );
   }, [trial, t]);
 
-  const ccy = trial?.currency || currency;
   const balanced = trial ? Boolean(trial.is_balanced) : null;
   const netProfit =
     trial?.net_profit != null ? Number(trial.net_profit) : null;
@@ -206,7 +203,7 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                 title: t("accounting.trialBalance"),
                 from,
                 to,
-                currency: ccy,
+                currency: "",
                 trial,
                 groupedRows,
                 balancedLabel: t("journal.balanced", "Balanced"),
@@ -272,7 +269,7 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
             title={t("operationalReports.filters", "Filters")}
             description={t(
               "accounting.trialBalanceFiltersSub",
-              "Choose period and currency, then refresh"
+              "Choose period, then refresh"
             )}
           >
             <ReportFilterGrid>
@@ -288,7 +285,6 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                 value={to}
                 onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
               />
-              <ReportCurrencyField value={currency} onChange={(e) => setCurrency(e.target.value)} />
               <div className="flex items-end sm:col-span-2 lg:col-span-1">
                 <Button
                   className={cn(reportFilterControlClass, "font-bold")}
@@ -311,17 +307,16 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
               span="full"
               icon={<Scale className="h-5 w-5" />}
               title={t("accounting.trialBalance")}
-              description={`${from} — ${to} · ${ccy}`}
+              description={`${from} — ${to}`}
               noPadding
             >
               {trial ? (
                 <div className="space-y-0 border-b border-border px-4 py-4 md:px-5">
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     <MetaItem
                       label={t("common.period", "Period")}
                       value={`${from} — ${to}`}
                     />
-                    <MetaItem label={t("common.currency")} value={ccy} />
                     <MetaItem
                       label={t("dashboard.accountsWithActivity", "Accounts")}
                       value={String(
@@ -344,7 +339,7 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                         {t("dashboard.netIncome", "Net income")}
                       </p>
                       <p className="text-sm font-semibold tabular-nums">
-                        {formatReportMoney(netProfit, ccy)}
+                        {formatReportMoney(netProfit, "")}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/40 px-3 py-2">
@@ -377,7 +372,9 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                           balanced ? "text-primary" : "text-destructive"
                         )}
                       >
-                        {ccy}
+                        {balanced
+                          ? t("journal.balanced", "Balanced")
+                          : t("dashboard.notBalanced", "Not balanced")}
                       </p>
                     </div>
                   </div>
@@ -390,7 +387,7 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                 trial={trial}
                 groupedRows={groupedRows}
                 maxHeight={maxTableHeight}
-                currency={ccy}
+                currency=""
               />
 
               {trial?.period_net_by_type ? (
@@ -429,7 +426,7 @@ const TrialBalanceContent = ({ maxTableHeight = 640 }) => {
                             ) : null}
                           </div>
                           <span className="shrink-0 text-sm font-semibold tabular-nums">
-                            {formatReportMoney(raw, ccy)}
+                            {formatReportMoney(raw, "")}
                           </span>
                         </div>
                       );

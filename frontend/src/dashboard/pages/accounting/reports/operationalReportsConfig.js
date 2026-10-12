@@ -36,15 +36,10 @@ export const defaultReportFilters = {
   from: defaultFrom(),
   to: defaultTo(),
   as_of: defaultTo(),
-  currency: "AFN",
   kind: "customer",
   employee_id: "",
   account_id: "",
 };
-
-/** Every operational report exposes a currency filter in the toolbar. */
-const withCurrency = (filters) =>
-  filters.includes("currency") ? filters : [...filters, "currency"];
 
 export const operationalReports = [
   {
@@ -52,7 +47,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.FINANCE,
     i18nKey: "operationalReports.balanceSheet",
     endpoint: "accounting/reports/balance-sheet/",
-    filters: ["asOf", "currency"],
+    filters: ["asOf"],
     displayType: "balanceSheet",
   },
   {
@@ -60,7 +55,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.FINANCE,
     i18nKey: "operationalReports.profitAndLoss",
     endpoint: "accounting/reports/profit-and-loss/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     displayType: "profitAndLoss",
   },
   {
@@ -68,7 +63,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.FINANCE,
     i18nKey: "operationalReports.generalJournal",
     endpoint: "accounting/reports/general-journal/",
-    filters: withCurrency(["dateRange"]),
+    filters: ["dateRange"],
     dataKey: "lines",
     columns: [
       { id: "date", label: "operationalReports.date" },
@@ -77,7 +72,6 @@ export const operationalReports = [
       { id: "source_type", label: "operationalReports.sourceType" },
       { id: "account_code", label: "accounting.accountCode" },
       { id: "account_name", label: "accounting.accountName" },
-      { id: "currency", label: "common.currency" },
       { id: "memo", label: "common.notes" },
       { id: "debit", label: "accounting.totalDebit", align: "right", money: true },
       { id: "credit", label: "accounting.totalCredit", align: "right", money: true },
@@ -88,7 +82,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.SALES,
     i18nKey: "operationalReports.salesByCustomer",
     endpoint: "accounting/reports/sales-by-customer/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     dataKey: "rows",
     columns: [
       { id: "name", label: "sales.customer" },
@@ -102,7 +96,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.SALES,
     i18nKey: "operationalReports.salesReturnsRegister",
     endpoint: "accounting/reports/sales-returns/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     dataKey: "rows",
     totalField: "total",
     columns: [
@@ -120,7 +114,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.PURCHASES,
     i18nKey: "operationalReports.purchasesByVendor",
     endpoint: "accounting/reports/purchases-by-vendor/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     dataKey: "rows",
     columns: [
       { id: "name", label: "purchases.supplier" },
@@ -132,7 +126,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.SALES,
     i18nKey: "operationalReports.collections",
     endpoint: "accounting/reports/collections/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     dataKey: "rows",
     totalField: "total",
     columns: [
@@ -148,7 +142,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.SALES,
     i18nKey: "operationalReports.outstandingReceivables",
     endpoint: "accounting/reports/outstanding-receivables/",
-    filters: ["asOf", "currency"],
+    filters: ["asOf"],
     dataKey: "rows",
     totalField: "total",
     columns: [
@@ -161,7 +155,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.SALES,
     i18nKey: "operationalReports.agingDetail",
     endpoint: "accounting/reports/aging-detail/",
-    filters: ["asOf", "currency", "agingKind"],
+    filters: ["asOf", "agingKind"],
     dataKey: "rows",
     summaryType: "agingTotals",
     columns: [
@@ -176,11 +170,10 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.INVENTORY,
     i18nKey: "operationalReports.stockLedger",
     endpoint: "accounting/reports/stock-ledger/",
-    filters: withCurrency([]),
+    filters: [],
     dataKey: "rows",
     columns: [
       { id: "product", label: "sales.product" },
-      { id: "currency", label: "common.currency" },
       { id: "weight", label: "inventory.weightAmount", align: "right" },
       { id: "meter", label: "inventory.meterAmount", align: "right" },
       { id: "khada", label: "inventory.khadaAmount", align: "right" },
@@ -193,7 +186,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.INVENTORY,
     i18nKey: "operationalReports.stockValuation",
     endpoint: "accounting/reports/stock-valuation/",
-    filters: ["currency"],
+    filters: [],
     dataKey: "rows",
     totalField: "total",
     columns: [
@@ -206,7 +199,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.PAYROLL,
     i18nKey: "operationalReports.payrollRegister",
     endpoint: "accounting/reports/payroll-register/",
-    filters: withCurrency(["dateRange"]),
+    filters: ["dateRange"],
     dataKey: "rows",
     columns: [
       { id: "run_date", label: "operationalReports.date" },
@@ -221,7 +214,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.PAYROLL,
     i18nKey: "operationalReports.employeeLedger",
     endpoint: "accounting/reports/employees/:employeeId/ledger/",
-    filters: withCurrency(["dateRange", "employee"]),
+    filters: ["dateRange", "employee"],
     dataKey: "lines",
     pathParam: "employeeId",
     pathFilter: "employee_id",
@@ -237,7 +230,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.FINANCE,
     i18nKey: "operationalReports.bankBook",
     endpoint: "accounting/reports/bank-book/:accountId/",
-    filters: withCurrency(["dateRange", "bankAccount"]),
+    filters: ["dateRange", "bankAccount"],
     dataKey: "lines",
     pathParam: "accountId",
     pathFilter: "account_id",
@@ -256,7 +249,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.FINANCE,
     i18nKey: "operationalReports.cashFlow",
     endpoint: "accounting/reports/cash-flow/",
-    filters: ["dateRange", "currency"],
+    filters: ["dateRange"],
     displayType: "summary",
     summaryFields: [
       { id: "net_profit", label: "operationalReports.netProfit" },
@@ -270,7 +263,7 @@ export const operationalReports = [
     category: REPORT_CATEGORIES.PURCHASES,
     i18nKey: "operationalReports.outstandingPayables",
     endpoint: "accounting/reports/outstanding-payables/",
-    filters: ["asOf", "currency"],
+    filters: ["asOf"],
     dataKey: "rows",
     totalField: "total",
     columns: [
@@ -295,9 +288,6 @@ export const buildReportUrl = (config, filters) => {
     if (!filters.from || !filters.to) return null;
     params.set("from", filters.from);
     params.set("to", filters.to);
-  }
-  if (config.filters.includes("currency")) {
-    params.set("currency", filters.currency || "AFN");
   }
   if (config.filters.includes("asOf")) {
     params.set("as_of", filters.as_of || defaultTo());

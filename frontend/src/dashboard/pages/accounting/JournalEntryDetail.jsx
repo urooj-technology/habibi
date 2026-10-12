@@ -207,7 +207,7 @@ const JournalEntryDetail = () => {
                     <MoneyAmount
                       value={data.total_debit_home}
                       side={MONEY_SIDE.DEBIT}
-                      currency="AFN"
+                      currency=""
                       showZero
                     />
                   </p>
@@ -220,7 +220,7 @@ const JournalEntryDetail = () => {
                     <MoneyAmount
                       value={data.total_credit_home}
                       side={MONEY_SIDE.CREDIT}
-                      currency="AFN"
+                      currency=""
                       showZero
                     />
                   </p>
@@ -247,7 +247,7 @@ const JournalEntryDetail = () => {
                       balanced ? "text-primary" : "text-destructive"
                     )}
                   >
-                    {money(data.total_debit_home)} AFN
+                    {money(data.total_debit_home)}
                   </p>
                 </div>
               </div>
@@ -282,10 +282,10 @@ const JournalEntryDetail = () => {
                         {t("journal.lineMemo", "Line memo")}
                       </th>
                       <th className={cn("px-3 py-3 text-right font-semibold", moneySideHeaderClass(MONEY_SIDE.DEBIT))}>
-                        {t("journal.debit", "Debit")} (AFN)
+                        {t("journal.debit", "Debit")}
                       </th>
                       <th className={cn("px-3 py-3 text-right font-semibold", moneySideHeaderClass(MONEY_SIDE.CREDIT))}>
-                        {t("journal.credit", "Credit")} (AFN)
+                        {t("journal.credit", "Credit")}
                       </th>
                       <th className="px-3 py-3 text-left font-semibold">
                         {t("journal.customer", "Customer")}

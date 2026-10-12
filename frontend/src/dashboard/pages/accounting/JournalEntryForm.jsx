@@ -361,7 +361,7 @@ const JournalEntryForm = () => {
     if (!balanced) {
       return t(
         "journal.mustBalance",
-        "Journal must balance: total debits must equal total credits (AFN)."
+        "Journal must balance: total debits must equal total credits."
       );
     }
     return "";
@@ -411,7 +411,7 @@ const JournalEntryForm = () => {
         )}
         subtitle={t(
           "journal.manualEntrySubtitle",
-          "Manual, balanced journal entry (AFN home currency)"
+          "Manual, balanced journal entry"
         )}
         backButton={ROUTE_BASE}
         backButtonLabel={t("common.backToList", "Back to list")}
@@ -586,7 +586,7 @@ const JournalEntryForm = () => {
 
                     <div>
                       <p className="mb-1 text-[10px] font-medium text-debit md:hidden">
-                        {t("journal.debit", "Debit (AFN)")}
+                        {t("journal.debit", "Debit")}
                       </p>
                       <Input
                         type="number"
@@ -605,7 +605,7 @@ const JournalEntryForm = () => {
 
                     <div>
                       <p className="mb-1 text-[10px] font-medium text-credit md:hidden">
-                        {t("journal.credit", "Credit (AFN)")}
+                        {t("journal.credit", "Credit")}
                       </p>
                       <Input
                         type="number"
@@ -706,7 +706,7 @@ const JournalEntryForm = () => {
                   {t("journal.totalDebit", "Total debit")}
                 </p>
                 <p className="text-sm font-semibold tabular-nums text-debit">
-                  {money(totalDebit)} AFN
+                  {money(totalDebit)}
                 </p>
               </div>
               <div className="rounded-md border border-credit/20 bg-credit/8 px-3 py-2">
@@ -714,7 +714,7 @@ const JournalEntryForm = () => {
                   {t("journal.totalCredit", "Total credit")}
                 </p>
                 <p className="text-sm font-semibold tabular-nums text-credit">
-                  {money(totalCredit)} AFN
+                  {money(totalCredit)}
                 </p>
               </div>
               <div
@@ -741,8 +741,7 @@ const JournalEntryForm = () => {
                 >
                   {balanced
                     ? money(totalDebit)
-                    : `${money(imbalance)} ${t("journal.difference", "diff")}`}{" "}
-                  AFN
+                    : `${money(imbalance)} ${t("journal.difference", "diff")}`}
                 </p>
               </div>
             </div>

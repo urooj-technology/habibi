@@ -14,7 +14,6 @@ import { FormShell, FormBody, FormGrid, FormSection, FormRow } from "../../../co
 import {
   ACCOUNT_TYPES,
   ROLE_OPTIONS,
-  CURRENCY_OPTIONS,
   CATEGORY_OPTIONS,
   CATEGORIES_BY_TYPE,
 } from "./accountFormOptions";
@@ -65,7 +64,7 @@ const AddAccountingAccount = () => {
     return {
       code: formData.code.trim(),
       name: formData.name.trim(),
-      currency: formData.currency || "AFN",
+      currency: "AFN",
       account_type: formData.account_type,
       category: formData.category || "",
       role: formData.role || "",
@@ -85,9 +84,6 @@ const AddAccountingAccount = () => {
     }
     if (!addAccountPayload.account_type) {
       errors.push(t("accounting.validation.accountTypeRequired"));
-    }
-    if (!["AFN", "USD"].includes(addAccountPayload.currency)) {
-      errors.push(t("accounting.validation.currencyRequired", "Currency is required"));
     }
     return errors;
   }, [addAccountPayload, t]);
@@ -113,8 +109,8 @@ const AddAccountingAccount = () => {
     { value: "", label: "common.none" },
     ...parentOptions.map((acc) => ({
       value: String(acc.id),
-      label: `${acc.code} - ${acc.name} (${acc.currency || "AFN"})`,
-      customLabel: `${acc.code} - ${acc.name} (${acc.currency || "AFN"})`,
+      label: `${acc.code} - ${acc.name}`,
+      customLabel: `${acc.code} - ${acc.name}`,
     })),
   ];
 
@@ -129,7 +125,7 @@ const AddAccountingAccount = () => {
         title={t("accounting.addAccount", "Add Account")}
         subtitle={t(
           "accounting.formSubtitle",
-          "Create a chart of accounts entry (AFN or USD)"
+          "Create a chart of accounts entry"
         )}
         backButton="/app/accounting/accounts"
         backButtonLabel={t("common.backToList", "Back to list")}
@@ -173,7 +169,7 @@ const AddAccountingAccount = () => {
             title={t("accounting.accountDetails", "Account details")}
             description={t(
               "accounting.formSubtitle",
-              "Create a chart of accounts entry (AFN or USD)"
+              "Create a chart of accounts entry"
             )}
           >
             <FormRow cols={2}>

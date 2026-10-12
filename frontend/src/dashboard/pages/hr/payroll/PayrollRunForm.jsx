@@ -12,13 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 import useFetchObject from "../../../../api/useFetchObject";
@@ -93,7 +86,6 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
     run_date: new Date().toISOString().split("T")[0],
     period_start: defaults.period_start,
     period_end: defaults.period_end,
-    currency: "AFN",
     reference: "",
     memo: "",
   });
@@ -171,7 +163,6 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
         run_date: doc.run_date || "",
         period_start: doc.period_start || "",
         period_end: doc.period_end || "",
-        currency: doc.currency || "AFN",
         reference: doc.reference || "",
         memo: doc.memo || "",
       });
@@ -421,7 +412,7 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
             title={t(`${i18nPrefix}.headerInfo`)}
             description={t(
               `${i18nPrefix}.headerInfoSub`,
-              "Pay period, currency and reference"
+              "Pay period and reference"
             )}
           >
             <FormRow cols={3}>
@@ -449,26 +440,6 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
             </FormRow>
 
             <FormRow cols={2}>
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">
-                  {t("common.currency")}
-                </label>
-                <Select
-                  value={header.currency}
-                  onValueChange={(v) =>
-                    setHeader((prev) => ({ ...prev, currency: v }))
-                  }
-                  disabled={readOnly}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AFN">AFN</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <FormTextField
                 name="reference"
                 label={`${i18nPrefix}.reference`}
@@ -516,15 +487,15 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{t(`${i18nPrefix}.totalGross`, "Total gross")}</span>
-                <span className="font-semibold text-foreground tabular-nums">{money(totalGross)} {header.currency}</span>
+                <span className="font-semibold text-foreground tabular-nums">{money(totalGross)}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{t(`${i18nPrefix}.totalDeductions`, "Total deductions")}</span>
-                <span className="font-semibold text-foreground tabular-nums">{money(totalDeductions)} {header.currency}</span>
+                <span className="font-semibold text-foreground tabular-nums">{money(totalDeductions)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
                 <span className="font-medium text-foreground">{t(`${i18nPrefix}.totalNet`)}</span>
-                <span className="font-bold text-primary tabular-nums">{money(totalNet)} {header.currency}</span>
+                <span className="font-bold text-primary tabular-nums">{money(totalNet)}</span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -698,7 +669,7 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
                   {t(`${i18nPrefix}.totalGross`, "Total gross")}
                 </p>
                 <p className="text-sm font-semibold tabular-nums">
-                  {money(totalGross)} {header.currency}
+                  {money(totalGross)}
                 </p>
               </div>
               <div className="rounded-md bg-muted/40 px-3 py-2">
@@ -706,7 +677,7 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
                   {t(`${i18nPrefix}.totalDeductions`, "Total deductions")}
                 </p>
                 <p className="text-sm font-semibold tabular-nums">
-                  {money(totalDeductions)} {header.currency}
+                  {money(totalDeductions)}
                 </p>
               </div>
               <div className="rounded-md bg-primary/10 px-3 py-2">
@@ -714,7 +685,7 @@ const PayrollRunForm = ({ config = payrollRunConfig }) => {
                   {t(`${i18nPrefix}.totalNet`)}
                 </p>
                 <p className="text-base font-bold tabular-nums text-primary">
-                  {money(totalNet)} {header.currency}
+                  {money(totalNet)}
                 </p>
               </div>
             </div>

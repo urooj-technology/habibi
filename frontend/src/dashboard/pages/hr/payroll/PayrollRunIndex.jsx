@@ -107,7 +107,7 @@ const PayrollRunIndex = ({ config = payrollRunConfig }) => {
         ? `${row.period_start} → ${row.period_end}`
         : "—",
     total_amount:
-      row.total_amount != null ? formatCurrency(row.total_amount, row.currency) : "—",
+      row.total_amount != null ? formatCurrency(row.total_amount) : "—",
     status: (
       <Chip
         size="small"

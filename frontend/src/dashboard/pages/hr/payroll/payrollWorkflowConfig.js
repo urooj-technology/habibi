@@ -15,7 +15,6 @@ export const payrollRunConfig = {
     { id: "run_date", label: "payrollRun.run_date" },
     { id: "period_label", label: "payrollRun.period" },
     { id: "total_amount", label: "common.total" },
-    { id: "currency", label: "common.currency" },
     { id: "status", label: "common.status" },
   ],
 };

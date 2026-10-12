@@ -27,7 +27,6 @@ const SupplierLedger = () => {
   const [error, setError] = useState("");
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const exportOpen = Boolean(exportAnchorEl);
-  const [currencyFilter, setCurrencyFilter] = useState("");
   const [search, setSearch] = useState("");
   const [transactionType, setTransactionType] = useState("");
   const [status, setStatus] = useState("");
@@ -66,7 +65,6 @@ const SupplierLedger = () => {
       setError("");
       try {
         const params = new URLSearchParams({ from, to });
-        if (currencyFilter) params.append("currency", currencyFilter);
         if (search) params.append("search", search);
         if (transactionType) params.append("transaction_type", transactionType);
         if (status) params.append("status", status);
@@ -92,7 +90,7 @@ const SupplierLedger = () => {
       }
     };
     fetchLedger();
-  }, [id, from, to, token, currencyFilter, search, transactionType, status, amountMin, amountMax, page, pageSize, t]);
+  }, [id, from, to, token, search, transactionType, status, amountMin, amountMax, page, pageSize, t]);
 
   const handleRefresh = () => {
     const currentFrom = from;
@@ -109,7 +107,6 @@ const SupplierLedger = () => {
     if (!from || !to || !token) return;
     try {
       const params = new URLSearchParams({ from, to });
-      if (currencyFilter) params.append("currency", currencyFilter);
       if (search) params.append("search", search);
       if (transactionType) params.append("transaction_type", transactionType);
       if (status) params.append("status", status);
@@ -173,11 +170,6 @@ const SupplierLedger = () => {
       downloadExport={downloadExport}
       handleRefresh={handleRefresh}
       ledgerVariant="supplier"
-      currencyFilter={currencyFilter}
-      onCurrencyFilterChange={(value) => {
-        setPage(0);
-        setCurrencyFilter(value);
-      }}
       search={search}
       setSearch={setSearch}
       transactionType={transactionType}

@@ -263,10 +263,7 @@ export function ReportDateField({ name, label, className, ...props }) {
   );
 }
 
-export const REPORT_CURRENCY_OPTIONS = [
-  { value: "AFN", label: "AFN" },
-  { value: "USD", label: "USD" },
-];
+export const REPORT_CURRENCY_OPTIONS = [];
 
 export function ReportSelectField({
   name,
@@ -309,18 +306,9 @@ export function ReportSelectField({
   );
 }
 
-export function ReportCurrencyField({ name = "currency", label, value, onChange, className }) {
-  const { t } = useTranslation();
-  return (
-    <ReportSelectField
-      name={name}
-      label={label ?? t("common.currency")}
-      value={value}
-      onChange={onChange}
-      options={REPORT_CURRENCY_OPTIONS}
-      className={className}
-    />
-  );
+/** No-op stub — currency filter removed from UI. */
+export function ReportCurrencyField() {
+  return null;
 }
 
 /** Printable document canvas with company / title / period header. */
