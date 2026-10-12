@@ -1433,6 +1433,7 @@
     "memo": "Memo"
   },
   "ledger": {
+    "searchPlaceholder": "Search voucher, reference, description…",
     "multiCurrency": "Multi",
     "lastTransactionDate": "Last Transaction Date",
     "totalSales": "Total Sales",

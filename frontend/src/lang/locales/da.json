@@ -1419,6 +1419,7 @@
     "memo": "یادداشت"
   },
   "ledger": {
+    "searchPlaceholder": "جستجوی سند، مرجع یا شرح…",
     "multiCurrency": "چند ارز",
     "lastTransactionDate": "تاریخ آخرین معامله",
     "totalSales": "کل فروش",

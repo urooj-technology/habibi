@@ -1414,6 +1414,7 @@
     "memo": "یادښت"
   },
   "ledger": {
+    "searchPlaceholder": "د سند، حوالې یا تفصیل لټون…",
     "multiCurrency": "څو اسعار",
     "lastTransactionDate": "د وروستي معاملې نېټه",
     "totalSales": "ټول پلور",
