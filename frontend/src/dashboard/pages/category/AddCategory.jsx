@@ -27,7 +27,6 @@ const AddCategory = () => {
   // Form state
   const [formValues, setFormValues] = useState({
     name: "",
-    description: "",
   });
 
   // Form errors state
@@ -177,15 +176,6 @@ const AddCategory = () => {
               error={hasError("name")}
               helperText={getErrorText("name")}
               required
-              fullWidth
-            />
-            <FormTextField
-              name="description"
-              label={t("category.description")}
-              value={formValues.description}
-              onChange={handleChange}
-              multiline
-              rows={4}
               fullWidth
             />
           </FormSection>

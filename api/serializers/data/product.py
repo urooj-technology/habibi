@@ -19,7 +19,6 @@ class ProductSerializer(DataRootSerializer):
             return {
                 "id": obj.category.id,
                 "name": obj.category.name,
-                "description": obj.category.description,
             }
         return None
 

@@ -30,7 +30,6 @@ const AddProduct = () => {
   const validationSchema = Yup.object({
     name: Yup.string().required(t("validation.required")),
     category: Yup.number().required(t("validation.required")),
-    description: Yup.string(),
   });
 
   const { handleAdd, loading, error } = useAdd(
@@ -44,7 +43,6 @@ const AddProduct = () => {
   const formik = useFormik({
     initialValues: {
       name: "",
-      description: "",
       category: "",
     },
     validationSchema,
@@ -113,15 +111,6 @@ const AddProduct = () => {
                   error={formik.touched.category && Boolean(formik.errors.category)}
                   helperText={formik.touched.category && formik.errors.category}
                 />
-                <div className="md:col-span-2">
-                  <FormTextField
-                    name="description"
-                    label={t("product.description")}
-                    value={formik.values.description}
-                    onChange={formik.handleChange}
-                    multiline
-                  />
-                </div>
               </div>
             </form>
           </FormSection>

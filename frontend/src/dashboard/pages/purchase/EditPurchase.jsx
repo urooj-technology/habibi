@@ -643,7 +643,6 @@ const EditPurchase = () => {
       await handleAddProduct({
         name: productForm.name,
         category: productForm.category,
-        description: productForm.notes || "",
       });
     } catch (error) {
       console.error("Error adding product:", error);

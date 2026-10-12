@@ -299,7 +299,6 @@ class SaleReturnableItemsMixin:
                     "product_details": {
                         "id": product.id,
                         "name": product.name,
-                        "description": product.description,
                     }
                     if product
                     else None,

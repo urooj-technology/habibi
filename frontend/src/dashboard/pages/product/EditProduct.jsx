@@ -30,7 +30,6 @@ const EditProduct = () => {
   const validationSchema = Yup.object({
     name: Yup.string().required(t("validation.required")),
     category: Yup.number().required(t("validation.required")),
-    description: Yup.string(),
   });
 
   const { data: categories = [], isLoading: categoriesLoading } =
@@ -57,7 +56,6 @@ const EditProduct = () => {
   const formik = useFormik({
     initialValues: {
       name: "",
-      description: "",
       category: "",
     },
     validationSchema,
@@ -75,7 +73,6 @@ const EditProduct = () => {
     if (product) {
       formik.setValues({
         name: product.name || "",
-        description: product.description || "",
         category: product.category || "",
       });
       if (product.category_details) {
@@ -160,15 +157,6 @@ const EditProduct = () => {
                   error={formik.touched.category && Boolean(formik.errors.category)}
                   helperText={formik.touched.category && formik.errors.category}
                 />
-                <div className="md:col-span-2">
-                  <FormTextField
-                    name="description"
-                    label={t("product.description")}
-                    value={formik.values.description}
-                    onChange={formik.handleChange}
-                    multiline
-                  />
-                </div>
               </div>
             </form>
           </FormSection>

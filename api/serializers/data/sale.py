@@ -10,7 +10,6 @@ def _product_details(product):
     return {
         "id": product.id,
         "name": product.name,
-        "description": product.description,
     }
 
 

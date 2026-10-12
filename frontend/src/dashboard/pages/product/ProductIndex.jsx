@@ -129,12 +129,6 @@ const ProductIndex = () => {
     { id: "id", label: t("common.id"), sortable: true, minWidth: 70 },
     { id: "name", label: t("product.name"), sortable: true, minWidth: 180 },
     {
-      id: "description",
-      label: t("product.description"),
-      sortable: true,
-      minWidth: 200,
-    },
-    {
       id: "category",
       label: t("product.category"),
       sortable: true,
@@ -320,10 +314,6 @@ const ProductIndex = () => {
       {
         label: t("product.category"),
         value: selectedProduct.category_details?.name || "-",
-      },
-      {
-        label: t("product.description"),
-        value: selectedProduct.description || t("common.noDescription"),
       },
       { label: t("common.id"), value: selectedProduct.id },
       {

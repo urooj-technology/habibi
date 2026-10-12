@@ -45,7 +45,6 @@ const CategoryIndex = () => {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     name: "",
-    description: "",
   });
 
   // Menu state
@@ -130,13 +129,11 @@ const CategoryIndex = () => {
       columns: [
         { id: "id", label: t("common.id", "ID"), align: "center" },
         { id: "name", label: t("category.name", "Name") },
-        { id: "description", label: t("category.description", "Description") },
       ],
       rows: categoriesData || [],
       getCell: (row, col) => {
         if (col.id === "id") return `#${row.id}`;
         if (col.id === "name") return row.name || "—";
-        if (col.id === "description") return row.description || "—";
         return "—";
       },
     });
@@ -158,7 +155,6 @@ const CategoryIndex = () => {
   const handleFilterReset = () => {
     setFilters({
       name: "",
-      description: "",
     });
     setFilterModalOpen(false);
   };
@@ -175,7 +171,6 @@ const CategoryIndex = () => {
   const columns = [
     { id: 'id', label: t('common.id'), sortable: true },
     { id: 'name', label: t('category.name'), sortable: true },
-    { id: 'description', label: t('category.description'), sortable: true },
   ];
 
   // Toolbar buttons

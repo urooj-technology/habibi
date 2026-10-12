@@ -24,7 +24,7 @@ const EditCategory = () => {
   const auth = useAuth();
   const token = auth?.user?.token;
 
-  const [formValues, setFormValues] = useState({ name: "", description: "" });
+  const [formValues, setFormValues] = useState({ name: "" });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
@@ -50,7 +50,6 @@ const EditCategory = () => {
     if (category) {
       setFormValues({
         name: category.name || "",
-        description: category.description || "",
       });
     }
   }, [category]);
@@ -163,15 +162,6 @@ const EditCategory = () => {
               error={hasError("name")}
               helperText={getErrorText("name")}
               required
-              fullWidth
-            />
-            <FormTextField
-              name="description"
-              label={t("category.description")}
-              value={formValues.description}
-              onChange={handleChange}
-              multiline
-              rows={4}
               fullWidth
             />
           </FormSection>

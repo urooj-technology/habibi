@@ -16,6 +16,5 @@ class InventorySerializer(DataRootSerializer):
             return {
                 "id": obj.product.id,
                 "name": obj.product.name,
-                "description": obj.product.description,
             }
         return None
