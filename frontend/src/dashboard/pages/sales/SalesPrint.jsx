@@ -63,7 +63,7 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
       receivedAmount,
       remainingAmount,
       currentDate,
-      customerName: sale.customer_details?.name || "مشتری",
+      customerName: sale.customer_details?.name || "نقدی / حضوری",
       customerContact: sale.customer_details?.contact || "",
       id: sale.id || "#",
     };

@@ -49,6 +49,35 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
     def _d(self, value):
         return Decimal(str(value)) if value is not None else Decimal("0")
 
+    def _normalize_optional_customer(self, data):
+        """Allow blank / empty customer for walk-in POS sales."""
+        try:
+            mutable = data.copy()
+        except Exception:
+            mutable = dict(data)
+        customer = mutable.get("customer")
+        if customer in ("", None, "null", "undefined"):
+            mutable["customer"] = None
+        return mutable
+
+    def _validate_walk_in_settlement(self, *, customer, total, received):
+        """
+        Walk-in (no customer): unpaid balance is not allowed — pay in full
+        or attach a customer for credit.
+        """
+        if customer not in (None, "", 0, "0"):
+            return None
+        total_d = self._d(total)
+        received_d = self._d(received)
+        if total_d > 0 and received_d < total_d:
+            return {
+                "error": (
+                    "Walk-in sales must be paid in full, or select a customer "
+                    "to record on account."
+                )
+            }
+        return None
+
     def _line_qty(self, item_data):
         return self._d(item_data.get("quantity", item_data.get("grain_amount", 0)))
 
@@ -75,8 +104,16 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        sale_data = request.data.copy()
+        sale_data = self._normalize_optional_customer(request.data)
         sale_items_data = sale_data.pop("items", [])
+
+        walk_err = self._validate_walk_in_settlement(
+            customer=sale_data.get("customer"),
+            total=sale_data.get("total_amount"),
+            received=sale_data.get("received_amount"),
+        )
+        if walk_err:
+            return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
 
         sale_serializer = self.get_serializer(data=sale_data)
         sale_serializer.is_valid(raise_exception=True)
@@ -119,8 +156,16 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
         from api.views.data.sale_return import returned_qty_for_sale_item
 
         sale = self.get_object()
-        sale_data = request.data.copy()
+        sale_data = self._normalize_optional_customer(request.data)
         sale_items_data = sale_data.pop("items", None)
+
+        walk_err = self._validate_walk_in_settlement(
+            customer=sale_data.get("customer", sale.customer_id),
+            total=sale_data.get("total_amount", sale.total_amount),
+            received=sale_data.get("received_amount", sale.received_amount),
+        )
+        if walk_err:
+            return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
 
         sale_serializer = self.get_serializer(sale, data=sale_data, partial=True)
         sale_serializer.is_valid(raise_exception=True)

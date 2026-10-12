@@ -628,11 +628,14 @@
       "validationIssues": "د اعتبار ستونزې: {{details}}",
       "quantitiesExceedStockFor": "اندازې له ذخیرې څخه زیاتې د: {{list}}"
     },
+    "customerOptional": "پیرودونکی (اختیاري)",
+    "walkInCustomer": "نغدي / حضوري پلور",
     "validation": {
       "selectCustomer": "مهرباني وکړئ پیرودونکی وټاکئ",
       "addCompleteItem": "لږترلږه یوه بشپړه کرښه اضافه کړئ",
       "exchangeRateRequiredAfn": "د افغانۍ لپاره د تبادلې نرخ اړین دی",
-      "paymentAccountRequired": "د نغدو یا بانکي حساب ټاکل اړین دي"
+      "paymentAccountRequired": "د نغدو یا بانکي حساب ټاکل اړین دي",
+      "walkInMustPayFull": "حضوري پلور باید بشپړ تادیه شي، یا د پور لپاره پیرودونکی وټاکئ."
     },
     "saleItemsProgress": "د پلور توکي ({{complete}} له {{total}} بشپړ)",
     "lineTotalTooltip": "مجموعه: {{currency}} {{amount}}",
@@ -801,6 +804,11 @@
     "productDetailsNotFound": "د جنس تفصیلات نه دي موندل شوي",
     "purchaseRequired": "پېرودل ضروري دي",
     "supplierRequired": "د تحویلونکي معلومات ضروري دی",
+    "supplierOptional": "عرضه کوونکی (اختیاري)",
+    "walkInSupplier": "نغدي / پرته له ثبت عرضه کوونکي",
+    "validation": {
+      "walkInMustPayFull": "پېرودنه پرته له عرضه کوونکي باید بشپړه تادیه شي، یا د پور لپاره عرضه کوونکی وټاکئ."
+    },
     "currencyRequired": "پیسې ضروري دي",
     "exchangeRate": "د تبادلې نرخ",
     "returnDateRequired": "د راستنېدو نېټه ضروري ده",

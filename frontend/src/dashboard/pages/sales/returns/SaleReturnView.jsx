@@ -127,7 +127,8 @@ const SaleReturnView = () => {
               <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="truncate">
-                  {doc.customer_details?.name || "—"}
+                  {doc.customer_details?.name ||
+                    t("sales.walkInCustomer", "Walk-in / cash sale")}
                 </span>
               </div>
             </PosField>

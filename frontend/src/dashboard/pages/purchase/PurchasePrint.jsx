@@ -61,7 +61,7 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
       receivedAmount,
       remainingAmount,
       currentDate,
-      supplierName: purchase.supplier_details?.name || "عرضه کننده",
+      supplierName: purchase.supplier_details?.name || "نقدی / بدون ثبت",
       supplierContact: purchase.supplier_details?.contact || "",
       id: purchase.id || "#",
     };

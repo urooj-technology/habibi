@@ -104,7 +104,7 @@ const AddSaleReturn = () => {
   );
   const sales = useMemo(() => {
     const arr = Array.isArray(salesData) ? salesData : salesData?.results || [];
-    return arr.filter((s) => s.customer || s.customer_details);
+    return arr;
   }, [salesData]);
 
   const { data: accountsData = [] } = useFetchObjects(
@@ -362,7 +362,7 @@ const AddSaleReturn = () => {
                 value={selectedSale || null}
                 onChange={(val) => setSaleId(val?.id ? String(val.id) : "")}
                 getOptionLabel={(s) =>
-                  `#${s.id} — ${s.customer_details?.name || t("common.unknown", "Customer")} · ${formatShopMoney(s.total_amount || 0)}`
+                  `#${s.id} — ${s.customer_details?.name || t("sales.walkInCustomer", "Walk-in / cash sale")} · ${formatShopMoney(s.total_amount || 0)}`
                 }
                 isOptionEqualToValue={(a, b) => a?.id === b?.id}
                 loading={salesLoading}

@@ -86,7 +86,7 @@
     "next": "بعدی",
     "previous": "قبلی",
     "view": "مشاهده",
-    "allRightsReserved": "توسعه یافته شده توسط تکنالوژی عروج",
+    "allRightsReserved": "توسعه یافته شده توسط عروج تکنالوژی",
     "notifications": "اطلاعیه‌ها",
     "profile": "پروفایل",
     "dataFields": "فیلدهای داده",
@@ -630,11 +630,14 @@
       "validationIssues": "مشکل اعتبارسنجی: {{details}}",
       "quantitiesExceedStockFor": "مقدار بیش از موجودی برای: {{list}}"
     },
+    "customerOptional": "مشتری (اختیاری)",
+    "walkInCustomer": "فروش نقدی / حضوری",
     "validation": {
       "selectCustomer": "لطفاً مشتری را انتخاب کنید",
       "addCompleteItem": "حداقل یک سطر کامل اضافه کنید",
       "exchangeRateRequiredAfn": "برای افغانی، نرخ تبدیل الزامی است",
-      "paymentAccountRequired": "انتخاب حساب نقد یا بانک الزامی است"
+      "paymentAccountRequired": "انتخاب حساب نقد یا بانک الزامی است",
+      "walkInMustPayFull": "فروش حضوری باید کامل پرداخت شود، یا مشتری را برای نسیه انتخاب کنید."
     },
     "saleItemsProgress": "اقلام فروش ({{complete}} از {{total}} کامل)",
     "lineTotalTooltip": "جمع: {{currency}} {{amount}}",
@@ -803,6 +806,11 @@
     "productDetailsNotFound": "جزئیات جنس یافت نشد",
     "purchaseRequired": "خرید الزامی است",
     "supplierRequired": "تأمین‌کننده الزامی است",
+    "supplierOptional": "تأمین‌کننده (اختیاری)",
+    "walkInSupplier": "نقدی / بدون ثبت تأمین‌کننده",
+    "validation": {
+      "walkInMustPayFull": "خرید بدون تأمین‌کننده باید کامل پرداخت شود، یا تأمین‌کننده را برای نسیه انتخاب کنید."
+    },
     "currencyRequired": "ارز الزامی است",
     "exchangeRate": "نرخ تبادل",
     "returnDateRequired": "تاریخ برگشت الزامی است",

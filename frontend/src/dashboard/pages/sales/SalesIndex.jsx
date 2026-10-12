@@ -226,7 +226,11 @@ const SalesIndex = () => {
       rows: salesData,
       getCell: (row, col) => {
         if (col.id === "id") return `#${row.id}`;
-        if (col.id === "customer") return row.customer_details?.name || "—";
+        if (col.id === "customer")
+          return (
+            row.customer_details?.name ||
+            t("sales.walkInCustomer", "Walk-in / cash sale")
+          );
         if (col.id === "date") {
           return row.sale_date ? new Date(row.sale_date).toLocaleDateString() : "—";
         }
@@ -464,7 +468,9 @@ const SalesIndex = () => {
                       <TableRow key={sale.id}>
                         <TableCell className="font-medium tabular-nums">#{sale.id}</TableCell>
                         <TableCell className="max-w-[160px] truncate">
-                          {sale.customer_details?.name || sale.customer_name || "—"}
+                          {sale.customer_details?.name ||
+                            sale.customer_name ||
+                            t("sales.walkInCustomer", "Walk-in / cash sale")}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-muted-foreground">
                           {sale.sale_date

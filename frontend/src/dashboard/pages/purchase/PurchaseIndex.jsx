@@ -239,7 +239,11 @@ const PurchaseIndex = () => {
       rows: filteredRows,
       getCell: (row, col) => {
         if (col.id === "id") return `#${row.id}`;
-        if (col.id === "supplier") return row.supplier_details?.name || "—";
+        if (col.id === "supplier")
+          return (
+            row.supplier_details?.name ||
+            t("purchase.walkInSupplier", "Cash / unlisted vendor")
+          );
         if (col.id === "date") {
           return row.purchase_date
             ? new Date(row.purchase_date).toLocaleDateString()
@@ -396,7 +400,8 @@ const PurchaseIndex = () => {
                       <TableRow key={purchase.id}>
                         <TableCell className="font-medium tabular-nums">#{purchase.id}</TableCell>
                         <TableCell className="max-w-[160px] truncate">
-                          {purchase.supplier_details?.name || "—"}
+                          {purchase.supplier_details?.name ||
+                            t("purchase.walkInSupplier", "Cash / unlisted vendor")}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-muted-foreground">
                           {purchase.purchase_date

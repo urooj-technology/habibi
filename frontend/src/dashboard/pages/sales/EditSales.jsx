@@ -452,20 +452,26 @@ const EditSales = () => {
     const newErrors = {};
     const validationMessages = [];
 
-    if (!formValues.customer) {
-      newErrors.customer = true;
-      validationMessages.push(t("sales.validation.selectCustomer"));
-    }
 
     if (completedItems.length === 0) {
       newErrors.items = true;
       validationMessages.push(t("sales.validation.addCompleteItem"));
     }
 
-    if (
-      Number.parseFloat(formValues.received_amount || 0) > 0 &&
-      !formValues.payment_account
-    ) {
+    const receivedNum = Number.parseFloat(formValues.received_amount || 0) || 0;
+    const totalNum = Number.parseFloat(itemsSubtotal || 0) || 0;
+    if (!formValues.customer && totalNum > 0 && receivedNum < totalNum) {
+      newErrors.customer = true;
+      newErrors.received_amount = true;
+      validationMessages.push(
+        t(
+          "sales.validation.walkInMustPayFull",
+          "Walk-in sale must be paid in full, or select a customer for credit."
+        )
+      );
+    }
+
+    if (receivedNum > 0 && !formValues.payment_account) {
       newErrors.payment_account = true;
       validationMessages.push(
         t("sales.validation.paymentAccountRequired", "Cash/Bank account is required")
@@ -507,7 +513,7 @@ const EditSales = () => {
     }
 
     const salePayload = {
-      customer: formValues.customer,
+      customer: formValues.customer || null,
       sale_date: formValues.sale_date,
       total_amount: itemsSubtotal,
       freight_amount: freightNumeric.toFixed(2),
@@ -758,11 +764,13 @@ const EditSales = () => {
             }
           >
             <PosField
-              label={t("sales.customer")}
-              required
+              label={t("sales.customerOptional", "Customer (optional)")}
               error={
                 formSubmitted && errors.customer
-                  ? t("sales.customerRequiredShort")
+                  ? t(
+                      "sales.validation.walkInMustPayFull",
+                      "Walk-in sale must be paid in full, or select a customer for credit."
+                    )
                   : null
               }
             >
@@ -782,7 +790,8 @@ const EditSales = () => {
                     getOptionLabel={(option) => option.name}
                     loading={customersLoading}
                     error={formSubmitted && errors.customer}
-                    placeholder="sales.customer"
+                    clearable
+                    placeholder="sales.walkInCustomer"
                   />
                 </div>
                 <Button

@@ -31,6 +31,35 @@ class PurchaseViewSet(DataRootViewSet):
         except (InvalidOperation, ValueError):
             return Decimal("0")
 
+    def _normalize_optional_supplier(self, data):
+        """Allow blank / empty supplier for walk-in cash purchases."""
+        try:
+            mutable = data.copy()
+        except Exception:
+            mutable = dict(data)
+        supplier = mutable.get("supplier")
+        if supplier in ("", None, "null", "undefined"):
+            mutable["supplier"] = None
+        return mutable
+
+    def _validate_walk_in_settlement(self, *, supplier, total, received):
+        """
+        No supplier: unpaid balance is not allowed — pay in full
+        or attach a supplier for credit (AP).
+        """
+        if supplier not in (None, "", 0, "0"):
+            return None
+        total_d = self.safe_decimal(total)
+        received_d = self.safe_decimal(received)
+        if total_d > 0 and received_d < total_d:
+            return {
+                "detail": (
+                    "Purchases without a supplier must be paid in full, "
+                    "or select a supplier to record on account."
+                )
+            }
+        return None
+
     def _line_qty(self, item_data):
         return self.safe_decimal(
             item_data.get("quantity", item_data.get("grain_amount", 0))
@@ -77,8 +106,16 @@ class PurchaseViewSet(DataRootViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
-            purchase_data = request.data
+            purchase_data = self._normalize_optional_supplier(request.data)
             purchase_items_data = purchase_data.get("items", [])
+
+            walk_err = self._validate_walk_in_settlement(
+                supplier=purchase_data.get("supplier"),
+                total=purchase_data.get("total_amount"),
+                received=purchase_data.get("received_amount"),
+            )
+            if walk_err:
+                return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
 
             purchase_serializer = self.get_serializer(data=purchase_data)
             purchase_serializer.is_valid(raise_exception=True)
@@ -116,8 +153,18 @@ class PurchaseViewSet(DataRootViewSet):
     def update(self, request, *args, **kwargs):
         try:
             purchase = self.get_object()
-            purchase_data = request.data
+            purchase_data = self._normalize_optional_supplier(request.data)
             purchase_items_data = purchase_data.get("items", [])
+
+            walk_err = self._validate_walk_in_settlement(
+                supplier=purchase_data.get("supplier", purchase.supplier_id),
+                total=purchase_data.get("total_amount", purchase.total_amount),
+                received=purchase_data.get(
+                    "received_amount", purchase.received_amount
+                ),
+            )
+            if walk_err:
+                return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
 
             purchase_serializer = self.get_serializer(
                 purchase, data=purchase_data, partial=True

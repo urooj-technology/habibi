@@ -154,7 +154,7 @@ const SalesView = () => {
       <PosHeader
         icon={<ShoppingCart className="h-4 w-4" />}
         title={`${t("sales.viewSale", "Sale")} #${sale.id}`}
-        subtitle={`${sale.customer_details?.name || t("customer.customer")} · ${saleDate}`}
+        subtitle={`${sale.customer_details?.name || t("sales.walkInCustomer", "Walk-in / cash sale")} · ${saleDate}`}
         actions={
           <>
             <Button
@@ -202,7 +202,8 @@ const SalesView = () => {
               <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="truncate">
-                  {sale.customer_details?.name || "—"}
+                  {sale.customer_details?.name ||
+                    t("sales.walkInCustomer", "Walk-in / cash sale")}
                 </span>
               </div>
             </PosField>

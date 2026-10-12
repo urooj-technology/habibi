@@ -640,11 +640,14 @@
       "validationIssues": "Validation issues: {{details}}",
       "quantitiesExceedStockFor": "Quantities exceed stock for: {{list}}"
     },
+    "customerOptional": "Customer (optional)",
+    "walkInCustomer": "Walk-in / cash sale",
     "validation": {
       "selectCustomer": "Please select a customer",
       "addCompleteItem": "Please add at least one complete item",
       "exchangeRateRequiredAfn": "Exchange rate is required for AFN",
-      "paymentAccountRequired": "Cash/Bank account is required"
+      "paymentAccountRequired": "Cash/Bank account is required",
+      "walkInMustPayFull": "Walk-in sale must be paid in full, or select a customer for credit."
     },
     "saleItemsProgress": "Sale items ({{complete}}/{{total}} complete)",
     "lineTotalTooltip": "Total: {{currency}} {{amount}}",
@@ -815,6 +818,11 @@
     "productDetailsNotFound": "Product details not found",
     "purchaseRequired": "Purchase is required",
     "supplierRequired": "Supplier is required",
+    "supplierOptional": "Supplier (optional)",
+    "walkInSupplier": "Cash / unlisted vendor",
+    "validation": {
+      "walkInMustPayFull": "Purchase without a supplier must be paid in full, or select a supplier for credit."
+    },
     "currencyRequired": "Currency is required",
     "exchangeRate": "Exchange Rate",
     "returnDateRequired": "Return date is required",

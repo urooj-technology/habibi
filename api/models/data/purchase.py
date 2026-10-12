@@ -9,7 +9,12 @@ from api.models.data.product import Product
 
 class Purchase(DataRoot):
     supplier = models.ForeignKey(
-        "Supplier", on_delete=models.CASCADE, related_name="purchases"
+        "Supplier",
+        on_delete=models.SET_NULL,
+        related_name="purchases",
+        null=True,
+        blank=True,
+        help_text="Optional — leave empty for walk-in / cash purchases.",
     )
     is_paid = models.BooleanField(default=False)
     purchase_date = models.DateField(default=timezone.now)

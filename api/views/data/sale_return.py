@@ -67,13 +67,23 @@ class SaleReturnViewSet(DataRootViewSet):
 
             notify_low_stock_if_needed(inventory)
 
-    def _validate_settlement(self, *, total, refunded, refund_account_id):
+    def _validate_settlement(
+        self, *, total, refunded, refund_account_id, customer_id=None
+    ):
         total = _d(total)
         refunded = _d(refunded)
         if refunded < 0:
             return {"error": "Refunded amount cannot be negative."}
         if refunded > total:
             return {"error": "Refunded amount cannot exceed return total."}
+        # Walk-in (no customer): no AR credit — refund in full.
+        if not customer_id and total > 0 and refunded < total:
+            return {
+                "error": (
+                    "Walk-in sale returns must be refunded in full "
+                    "(no customer account to credit)."
+                )
+            }
         if refunded > 0:
             if not refund_account_id:
                 return {"error": "Select a cash/bank account for the refund."}
@@ -157,13 +167,7 @@ class SaleReturnViewSet(DataRootViewSet):
                 {"error": "Original sale invoice is required and must exist."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not sale.customer_id:
-            return Response(
-                {"error": "Cannot return a sale without a customer."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        data["customer"] = sale.customer_id
+        data["customer"] = sale.customer_id  # may be null for walk-in sales
 
         total = _d(data.get("total_amount", 0))
         refunded = _d(data.get("refunded_amount", 0))
@@ -171,6 +175,7 @@ class SaleReturnViewSet(DataRootViewSet):
             total=total,
             refunded=refunded,
             refund_account_id=data.get("refund_account"),
+            customer_id=sale.customer_id,
         )
         if settle_err:
             return Response(settle_err, status=status.HTTP_400_BAD_REQUEST)
@@ -228,6 +233,7 @@ class SaleReturnViewSet(DataRootViewSet):
             total=total,
             refunded=refunded,
             refund_account_id=refund_account,
+            customer_id=sale.customer_id,
         )
         if settle_err:
             return Response(settle_err, status=status.HTTP_400_BAD_REQUEST)

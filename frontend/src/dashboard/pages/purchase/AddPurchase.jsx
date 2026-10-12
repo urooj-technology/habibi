@@ -458,13 +458,6 @@ const AddPurchase = () => {
     const newErrors = {};
     const validationMessages = [];
 
-    if (!formData.supplier) {
-      newErrors.supplier = true;
-      validationMessages.push(
-        t("purchase.supplierRequired", "Supplier is required")
-      );
-    }
-
     if (completedItems.length === 0) {
       newErrors.items = true;
       validationMessages.push(
@@ -475,10 +468,20 @@ const AddPurchase = () => {
       );
     }
 
-    if (
-      Number.parseFloat(formData.received_amount || 0) > 0 &&
-      !formData.payment_account
-    ) {
+    const receivedNum = Number.parseFloat(formData.received_amount || 0) || 0;
+    const totalNum = Number.parseFloat(formData.total_amount || 0) || 0;
+    if (!formData.supplier && totalNum > 0 && receivedNum < totalNum) {
+      newErrors.supplier = true;
+      newErrors.received_amount = true;
+      validationMessages.push(
+        t(
+          "purchase.validation.walkInMustPayFull",
+          "Purchase without a supplier must be paid in full, or select a supplier for credit."
+        )
+      );
+    }
+
+    if (receivedNum > 0 && !formData.payment_account) {
       newErrors.payment_account = true;
       validationMessages.push(
         t("purchase.paymentAccountRequired", "Cash/Bank account is required")
@@ -493,7 +496,7 @@ const AddPurchase = () => {
 
     try {
       const purchaseData = {
-        supplier: formData.supplier?.id,
+        supplier: formData.supplier?.id || null,
         purchase_date: formData.purchase_date,
         total_amount: formatAmount(formData.total_amount),
         received_amount: formatAmount(formData.received_amount),
@@ -729,11 +732,13 @@ const AddPurchase = () => {
             title={t("purchase.purchaseDetails", "Purchase details")}
           >
             <PosField
-              label={t("purchase.supplier", "Supplier")}
-              required
+              label={t("purchase.supplierOptional", "Supplier (optional)")}
               error={
                 formSubmitted && errors.supplier
-                  ? t("purchase.supplierRequired", "Supplier is required")
+                  ? t(
+                      "purchase.validation.walkInMustPayFull",
+                      "Purchase without a supplier must be paid in full, or select a supplier for credit."
+                    )
                   : null
               }
             >
@@ -747,7 +752,8 @@ const AddPurchase = () => {
                     }
                     getOptionLabel={(option) => option.name}
                     error={formSubmitted && errors.supplier}
-                    placeholder="purchase.supplier"
+                    clearable
+                    placeholder="purchase.walkInSupplier"
                   />
                 </div>
                 <Button

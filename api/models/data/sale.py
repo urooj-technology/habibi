@@ -16,6 +16,7 @@ class Sale(DataRoot):
         related_name="sales",
         null=True,
         blank=True,
+        help_text="Optional — leave empty for walk-in / POS cash sales.",
     )
     document_kind = models.CharField(
         max_length=16,

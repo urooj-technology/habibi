@@ -159,7 +159,8 @@ const SaleReturnsIndex = () => {
                         #{row.sale || row.sale_details?.id}
                       </TableCell>
                       <TableCell>
-                        {row.customer_details?.name || "—"}
+                        {row.customer_details?.name ||
+                          t("sales.walkInCustomer", "Walk-in / cash sale")}
                       </TableCell>
                       <TableCell className="text-end tabular-nums font-medium">
                         {formatShopMoney(total)}

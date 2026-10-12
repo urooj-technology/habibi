@@ -157,7 +157,7 @@ const PurchaseView = () => {
       <PosHeader
         icon={<Package className="h-4 w-4" />}
         title={`${t("purchase.viewPurchase", "Purchase")} #${purchase.id}`}
-        subtitle={`${purchase.supplier_details?.name || t("purchase.supplier")} · ${purchaseDate}`}
+        subtitle={`${purchase.supplier_details?.name || t("purchase.walkInSupplier", "Cash / unlisted vendor")} · ${purchaseDate}`}
         actions={
           <>
             <Button
@@ -197,7 +197,8 @@ const PurchaseView = () => {
               <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium">
                 <Truck className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="truncate">
-                  {purchase.supplier_details?.name || "—"}
+                  {purchase.supplier_details?.name ||
+                    t("purchase.walkInSupplier", "Cash / unlisted vendor")}
                 </span>
               </div>
             </PosField>
