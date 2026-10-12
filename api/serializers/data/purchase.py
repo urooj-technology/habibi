@@ -1,31 +1,32 @@
 from rest_framework import serializers
+
 from api.models.data.purchase import Purchase, PurchaseItem
 from api.serializers.data.base import DataRootSerializer
 
 
-def _product_measurement_details(product):
+def _product_details(product):
     if not product:
         return None
     return {
         "id": product.id,
         "name": product.name,
-        "is_weight": product.is_weight,
-        "is_meter": product.is_meter,
-        "is_khada": product.is_khada,
-        "is_grain": product.is_grain,
         "description": product.description,
     }
 
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_details = serializers.SerializerMethodField()
+    line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = PurchaseItem
         fields = "__all__"
 
     def get_product_details(self, obj):
-        return _product_measurement_details(obj.product)
+        return _product_details(obj.product)
+
+    def get_line_total(self, obj):
+        return obj.line_total
 
 
 class PurchaseSerializer(DataRootSerializer):

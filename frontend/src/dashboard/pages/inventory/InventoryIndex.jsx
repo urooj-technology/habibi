@@ -258,10 +258,31 @@ const InventoryIndex = () => {
       minWidth: 150,
       format: (value, row) => row.product_details?.name || "-"
     },
-    { id: "weight_amount", label: t("inventory.weightAmount"), minWidth: 120 },
-    { id: "khada_amount", label: t("inventory.khadaAmount"), minWidth: 120 },
-    { id: "meter_amount", label: t("inventory.meterAmount"), minWidth: 120 },
-    { id: "thickness", label: t("inventory.thickness"), minWidth: 100 },
+    {
+      id: "quantity",
+      label: t("common.quantity", "Quantity"),
+      minWidth: 120,
+      format: (value, row) => {
+        const q = row.quantity;
+        return q != null && q !== "" ? parseFloat(q).toFixed(2) : "0.00";
+      },
+    },
+    {
+      id: "buy_price",
+      label: t("inventory.buyPrice", "Buy price"),
+      minWidth: 120,
+      format: (value) =>
+        value != null && value !== "" ? parseFloat(value).toFixed(2) : "—",
+    },
+    {
+      id: "min_quantity",
+      label: t("inventory.minQuantity", "Min qty"),
+      minWidth: 100,
+      format: (value, row) => {
+        const q = row.min_quantity;
+        return q != null && q !== "" ? parseFloat(q).toFixed(2) : "0.00";
+      },
+    },
   ];
 
   const InfoField = ({ label, value }) => (
@@ -334,20 +355,31 @@ const InventoryIndex = () => {
                 <hr className="border-border mb-3" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InfoField
-                    label={t("inventory.weightAmount")}
-                    value={selectedInventory.weight_amount ? parseFloat(selectedInventory.weight_amount).toFixed(2) : "0.00"}
+                    label={t("common.quantity", "Quantity")}
+                    value={
+                      selectedInventory.quantity != null &&
+                      selectedInventory.quantity !== ""
+                        ? parseFloat(selectedInventory.quantity).toFixed(2)
+                        : "0.00"
+                    }
                   />
                   <InfoField
-                    label={t("inventory.khadaAmount")}
-                    value={selectedInventory.khada_amount ? parseFloat(selectedInventory.khada_amount).toFixed(2) : "0.00"}
+                    label={t("inventory.buyPrice", "Buy price")}
+                    value={
+                      selectedInventory.buy_price != null &&
+                      selectedInventory.buy_price !== ""
+                        ? parseFloat(selectedInventory.buy_price).toFixed(2)
+                        : "—"
+                    }
                   />
                   <InfoField
-                    label={t("inventory.meterAmount")}
-                    value={selectedInventory.meter_amount ? parseFloat(selectedInventory.meter_amount).toFixed(2) : "0.00"}
-                  />
-                  <InfoField
-                    label={t("inventory.thickness")}
-                    value={selectedInventory.thickness ? parseFloat(selectedInventory.thickness).toFixed(2) : "0.00"}
+                    label={t("inventory.minQuantity", "Min quantity")}
+                    value={
+                      selectedInventory.min_quantity != null &&
+                      selectedInventory.min_quantity !== ""
+                        ? parseFloat(selectedInventory.min_quantity).toFixed(2)
+                        : "0.00"
+                    }
                   />
                 </div>
               </div>

@@ -305,46 +305,25 @@ def build_aging_detail(*, kind: str, currency: str, as_of: date | None = None) -
     }
 
 
-def build_stock_ledger(currency: str) -> dict:
+def build_stock_ledger(currency: str = None) -> dict:
     rows = []
-    for inv in Inventory.objects.select_related("product").filter(is_deleted=False, currency=currency):
+    for inv in Inventory.objects.select_related("product").filter(is_deleted=False):
         rows.append(
             {
                 "inventory_id": inv.id,
                 "product": inv.product.name if inv.product else "—",
-                "currency": inv.currency,
-                "weight": _money(inv.weight_amount or 0),
-                "meter": _money(inv.meter_amount or 0),
-                "khada": _money(inv.khada_amount or 0),
-                "grain": _money(inv.grain_amount or 0),
+                "quantity": _money(inv.quantity or 0),
                 "buy_price": _money(inv.buy_price or 0),
             }
         )
-    return {"currency": currency, "rows": rows}
+    return {"rows": rows}
 
 
-def build_stock_valuation(currency: str) -> dict:
+def build_stock_valuation(currency: str = None) -> dict:
     total = Decimal("0")
     rows = []
-    amount_by_unit = {
-        "weight": "weight_amount",
-        "meter": "meter_amount",
-        "khada": "khada_amount",
-        "grain": "grain_amount",
-    }
-    for inv in Inventory.objects.select_related("product").filter(is_deleted=False, currency=currency):
-        base = (getattr(inv, "buy_pricing_base", None) or "").strip()
-        field = amount_by_unit.get(base)
-        if field:
-            qty = getattr(inv, field, None) or Decimal("0")
-        else:
-            qty = (
-                inv.weight_amount
-                or inv.meter_amount
-                or inv.khada_amount
-                or inv.grain_amount
-                or Decimal("1")
-            )
+    for inv in Inventory.objects.select_related("product").filter(is_deleted=False):
+        qty = inv.quantity or Decimal("0")
         value = (Decimal(str(qty or 0)) * Decimal(str(inv.buy_price or 0))).quantize(
             Decimal("0.01")
         )
@@ -354,6 +333,8 @@ def build_stock_valuation(currency: str) -> dict:
                 {
                     "inventory_id": inv.id,
                     "product": inv.product.name if inv.product else "—",
+                    "quantity": _money(qty),
+                    "buy_price": _money(inv.buy_price or 0),
                     "value": _money(value),
                 }
             )

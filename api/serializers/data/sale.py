@@ -1,18 +1,15 @@
 from rest_framework import serializers
+
 from api.models.data.sale import Sale, SaleItems
 from api.serializers.data.base import DataRootSerializer
 
 
-def _product_measurement_details(product):
+def _product_details(product):
     if not product:
         return None
     return {
         "id": product.id,
         "name": product.name,
-        "is_weight": product.is_weight,
-        "is_meter": product.is_meter,
-        "is_khada": product.is_khada,
-        "is_grain": product.is_grain,
         "description": product.description,
     }
 
@@ -20,6 +17,7 @@ def _product_measurement_details(product):
 class SaleItemsSerializer(DataRootSerializer):
     sale_details = serializers.SerializerMethodField()
     inventory_details = serializers.SerializerMethodField()
+    line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = SaleItems
@@ -30,7 +28,6 @@ class SaleItemsSerializer(DataRootSerializer):
             return {
                 "id": obj.sale.id,
                 "received_amount": obj.sale.received_amount,
-                "currency": obj.sale.currency,
             }
         return None
 
@@ -43,16 +40,13 @@ class SaleItemsSerializer(DataRootSerializer):
             "id": inv.id,
             "product": inv.product_id,
             "product_name": product.name if product else None,
-            "product_details": _product_measurement_details(product),
-            "thickness": inv.thickness,
-            "weight_amount": inv.weight_amount,
-            "meter_amount": inv.meter_amount,
-            "khada_amount": inv.khada_amount,
-            "grain_amount": inv.grain_amount,
+            "product_details": _product_details(product),
+            "quantity": inv.quantity,
             "buy_price": inv.buy_price,
-            "sell_price": getattr(inv, "sell_price", None),
-            "currency": getattr(inv, "currency", None),
         }
+
+    def get_line_total(self, obj):
+        return obj.line_total
 
 
 class SaleSerializer(DataRootSerializer):

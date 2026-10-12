@@ -2,22 +2,13 @@ import React, { forwardRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   calculateSaleLineTotal,
-  defaultPricingBase,
-  getLineMeasurementEntries,
+  getLineQuantity,
   resolveLineProduct,
-  UNIT_LABEL_KEYS,
 } from "../../../utils/measurementConversion";
-
-const UNIT_SHORT = {
-  weight: "کگ",
-  meter: "متر",
-  khada: "خرده",
-  grain: "دانه",
-};
 
 /**
  * Print-ready RTL sales bill.
- * Line total = sale_price × pricing_base qty only.
+ * Line total = sale_price × quantity.
  * Freight (کرایه) is informational and never added to the bill total.
  */
 const SalesPrint = forwardRef(({ sale }, ref) => {
@@ -34,11 +25,7 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
         product.name ||
         item.inventory_details?.product_details?.name ||
         "جنس";
-      const pricingBase = defaultPricingBase(product, item.pricing_base);
-      const measurements = getLineMeasurementEntries(item, product);
-      const priced =
-        measurements.find((m) => m.unit === pricingBase) || measurements[0] || null;
-      const qty = priced?.amount ?? 0;
+      const qty = getLineQuantity(item);
       const unitPrice = Number.parseFloat(item.sale_price) || 0;
       const lineTotal = calculateSaleLineTotal(item);
 
@@ -46,8 +33,6 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
         index: index + 1,
         productName,
         note: item.note || "",
-        // Only the measurement used for pricing (not both dual units)
-        qtyUnit: priced?.unit || pricingBase || "",
         qty,
         unitPrice,
         lineTotal,
@@ -56,7 +41,6 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
 
     const linesSubtotal = lines.reduce((sum, row) => sum + row.lineTotal, 0);
     const storedTotal = Number.parseFloat(sale.total_amount);
-    // Prefer recomputed lines; fall back to stored total if lines empty
     const invoiceTotal =
       lines.length > 0
         ? linesSubtotal
@@ -66,8 +50,6 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
     const freightAmount = Math.max(0, Number.parseFloat(sale.freight_amount) || 0);
     const receivedAmount = Math.max(0, Number.parseFloat(sale.received_amount) || 0);
     const remainingAmount = invoiceTotal - receivedAmount;
-    const currency =
-      sale.currency === "USD" ? "دالر" : sale.currency === "AFN" ? "افغانی" : sale.currency || "افغانی";
 
     const dateSource = sale.sale_date || sale.created_at;
     const date = dateSource ? new Date(dateSource) : new Date();
@@ -80,7 +62,6 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
       freightAmount,
       receivedAmount,
       remainingAmount,
-      currency,
       currentDate,
       customerName: sale.customer_details?.name || "مشتری",
       customerContact: sale.customer_details?.contact || "",
@@ -151,10 +132,6 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
             <span style={s.metaLabel}>تاریخ</span>
             <span style={s.metaValue}>{bill.currentDate}</span>
           </div>
-          <div style={s.metaPair}>
-            <span style={s.metaLabel}>واحد پول</span>
-            <span style={s.metaValue}>{bill.currency}</span>
-          </div>
         </div>
       </section>
 
@@ -189,14 +166,10 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
                     {row.note || "—"}
                   </td>
                   <td style={s.tdCenter}>
-                    {!row.qty || !row.qtyUnit ? (
+                    {!row.qty ? (
                       "—"
                     ) : (
-                      <span style={s.qtySingle}>
-                        {formatQty(row.qty)}{" "}
-                        {UNIT_SHORT[row.qtyUnit] ||
-                          t(UNIT_LABEL_KEYS[row.qtyUnit], row.qtyUnit)}
-                      </span>
+                      <span style={s.qtySingle}>{formatQty(row.qty)}</span>
                     )}
                   </td>
                   <td style={s.tdCenter}>{formatNumber(row.unitPrice)}</td>
@@ -230,36 +203,26 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
         <div style={s.totalsCard}>
           <div style={s.totalRow}>
             <span>مجموع اقلام</span>
-            <strong>
-              {formatNumber(bill.invoiceTotal)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.invoiceTotal)}</strong>
           </div>
           <div style={{ ...s.totalRow, ...s.totalMuted }}>
             <span>
               کرایه
               <span style={s.infoTag}> اطلاعاتی </span>
             </span>
-            <span>
-              {formatNumber(bill.freightAmount)} {bill.currency}
-            </span>
+            <span>{formatNumber(bill.freightAmount)}</span>
           </div>
           <div style={{ ...s.totalRow, ...s.totalEmph }}>
             <span>جمع قابل پرداخت</span>
-            <strong>
-              {formatNumber(bill.invoiceTotal)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.invoiceTotal)}</strong>
           </div>
           <div style={s.totalRow}>
             <span>پرداخت شده</span>
-            <span>
-              {formatNumber(bill.receivedAmount)} {bill.currency}
-            </span>
+            <span>{formatNumber(bill.receivedAmount)}</span>
           </div>
           <div style={{ ...s.totalRow, ...s.remainingRow }}>
             <span>باقیمانده</span>
-            <strong>
-              {formatNumber(bill.remainingAmount)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.remainingAmount)}</strong>
           </div>
         </div>
       </section>

@@ -75,7 +75,6 @@ import JournalEntryDetail from "./dashboard/pages/accounting/JournalEntryDetail"
 import ReportsHubPage from "./dashboard/pages/accounting/reports/ReportsHubPage";
 import OperationalReportPage from "./dashboard/pages/accounting/reports/OperationalReportPage";
 import TrialBalancePage from "./dashboard/pages/accounting/TrialBalancePage";
-import CurrencyConversionPage from "./dashboard/pages/accounting/CurrencyConversionPage";
 import NotificationsPage from "./dashboard/pages/notifications/NotificationsPage";
 // Product Pages
 import ProductIndex from "./dashboard/pages/product/ProductIndex";
@@ -344,10 +343,6 @@ const AppContent = () => {
                             <Route
                               path="trial-balance"
                               element={<RequirePermission perm="accounting.view"><TrialBalancePage /></RequirePermission>}
-                            />
-                            <Route
-                              path="currency-conversion"
-                              element={<RequirePermission perm="accounting.view"><CurrencyConversionPage /></RequirePermission>}
                             />
                             <Route
                               path="reports/:reportId"

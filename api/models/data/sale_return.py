@@ -10,7 +10,7 @@ from api.models.data.sale import Sale, SaleItems
 
 
 class SaleReturn(DataRoot):
-    """Customer credit note / sales return linked to an original sale invoice."""
+    """Customer credit note / sales return linked to an original sale."""
 
     sale = models.ForeignKey(
         Sale,
@@ -24,22 +24,15 @@ class SaleReturn(DataRoot):
         null=True,
         blank=True,
     )
-    currency = models.CharField(max_length=5, choices=[("AFN", "AFN"), ("USD", "USD")])
     return_date = models.DateTimeField(default=timezone.now)
     total_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=12, decimal_places=2, null=True, blank=True
     )
     refunded_amount = models.DecimalField(
-        max_digits=10,
+        max_digits=12,
         decimal_places=2,
         default=Decimal("0.00"),
-        help_text="Cash/bank refund given to the customer. Remainder credits AR.",
-    )
-    equivalent_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0.00")
-    )
-    exchange_rate = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
+        help_text="Cash refund given to the customer. Remainder credits AR.",
     )
     refund_account = models.ForeignKey(
         "api.AccountingAccount",
@@ -54,20 +47,9 @@ class SaleReturn(DataRoot):
     def __str__(self):
         return f"SaleReturn #{self.pk} — Sale #{self.sale_id}"
 
-    def calculate_equivalent_amount(self):
-        if self.currency == "AFN" and self.exchange_rate > 0:
-            self.equivalent_amount = (
-                self.total_amount or Decimal("0.00")
-            ) / self.exchange_rate
-        else:
-            self.equivalent_amount = Decimal("0.00")
-
     def save(self, *args, **kwargs):
         if self.sale_id and not self.customer_id:
             self.customer_id = self.sale.customer_id
-        if self.sale_id and not self.currency:
-            self.currency = self.sale.currency
-        self.calculate_equivalent_amount()
         super().save(*args, **kwargs)
 
 
@@ -86,37 +68,14 @@ class SaleReturnItem(DataRoot):
         Inventory, on_delete=models.CASCADE, related_name="sale_return_items"
     )
     note = models.CharField(max_length=255, null=True, blank=True)
-    weight_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    meter_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    khada_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    grain_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+    quantity = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
     sale_price = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
     buy_price = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
-    buy_currency = models.CharField(
-        max_length=5, choices=[("AFN", "AFN"), ("USD", "USD")], default="AFN"
-    )
-    pricing_base = models.CharField(
-        max_length=20,
-        choices=[
-            ("weight", "Weight"),
-            ("meter", "Meter"),
-            ("khada", "Khada"),
-            ("grain", "Grain"),
-        ],
-        null=True,
-        blank=True,
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
 
     def __str__(self):

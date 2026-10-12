@@ -18,11 +18,9 @@ import { useAuth } from "../../../../context/AuthContext";
 import { API_BASE_URL } from "../../../../config/env";
 import {
   calculatePricedLineTotal,
-  defaultPricingBase,
-  getSelectedUnits,
-  applyDualMeasurementSync,
+  quantityPayload,
 } from "../../../../utils/measurementConversion";
-import PricingBaseSelect from "@/components/pos/PricingBaseSelect";
+import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
   PosHeader,
@@ -94,7 +92,6 @@ const AddSaleReturn = () => {
     return_date: new Date().toISOString().split("T")[0],
     refunded_amount: "",
     refund_account: null,
-    exchange_rate: "",
     note: "",
   });
   const [messages, setMessages] = useState([]);
@@ -116,18 +113,14 @@ const AddSaleReturn = () => {
     token
   );
 
-  const currency = returnable?.currency || "AFN";
-
   const cashBankAccounts = useMemo(() => {
     const arr = Array.isArray(accountsData)
       ? accountsData
       : accountsData?.results || [];
-    return arr.filter(
-      (a) =>
-        (a?.role === "CASH" || a?.role === "BANK") &&
-        (!currency || a?.currency === currency)
-    );
-  }, [accountsData, currency]);
+    const cashBank = arr.filter((a) => a?.role === "CASH" || a?.role === "BANK");
+    const afn = cashBank.filter((a) => !a?.currency || a.currency === "AFN");
+    return afn.length > 0 ? afn : cashBank;
+  }, [accountsData]);
 
   const addMessage = useCallback((message, severity = "info") => {
     const id = Date.now() + Math.random();
@@ -165,10 +158,6 @@ const AddSaleReturn = () => {
         setReturnable(payload);
         setFormValues((prev) => ({
           ...prev,
-          exchange_rate:
-            payload.currency === "AFN"
-              ? String(payload.exchange_rate || "")
-              : "",
           refunded_amount: "",
           refund_account: null,
         }));
@@ -178,20 +167,11 @@ const AddSaleReturn = () => {
             inventory_id: row.inventory_id,
             product_name: row.product_name,
             product_details: row.product_details || {},
-            thickness: row.thickness,
             sale_price: row.sale_price,
-            buy_price: row.buy_price,
-            buy_currency: row.buy_currency,
-            pricing_base: defaultPricingBase(
-              row.product_details || {},
-              row.pricing_base
-            ),
-            remaining: row.remaining,
-            sold: row.sold,
-            weight_amount: "",
-            meter_amount: "",
-            khada_amount: "",
-            grain_amount: "",
+            sold_quantity: Number.parseFloat(row.sold_quantity || 0) || 0,
+            remaining_quantity:
+              Number.parseFloat(row.remaining_quantity || 0) || 0,
+            quantity: "",
             note: "",
             include: false,
           }))
@@ -224,63 +204,21 @@ const AddSaleReturn = () => {
     );
   }, []);
 
-  /** Qty change with dual-measurement auto-sync (same as sales). Ratio from original sold qtys. */
-  const updateLineQty = useCallback((saleItemId, field, value) => {
-    setLines((prev) =>
-      prev.map((line) => {
-        if (line.sale_item_id !== saleItemId) return line;
-        const sold = line.sold || {};
-        const ratioSource = {
-          weight_amount: sold.weight,
-          meter_amount: sold.meter,
-          khada_amount: sold.khada,
-          grain_amount: sold.grain,
-        };
-        const sync = applyDualMeasurementSync({
-          productOrFlags: line.product_details || {},
-          ratioSource,
-          changedField: field,
-          changedValue: value,
-        });
-        return { ...line, ...sync };
-      })
-    );
-  }, []);
-
   const activeLines = useMemo(
     () =>
-      lines.filter((line) => {
-        if (!line.include) return false;
-        return (
-          Number(line.weight_amount || 0) > 0 ||
-          Number(line.meter_amount || 0) > 0 ||
-          Number(line.khada_amount || 0) > 0 ||
-          Number(line.grain_amount || 0) > 0
-        );
-      }),
+      lines.filter(
+        (line) => line.include && Number.parseFloat(line.quantity || 0) > 0
+      ),
     [lines]
   );
 
   const itemsSubtotal = useMemo(
     () =>
-      activeLines.reduce((sum, line) => {
-        const base =
-          defaultPricingBase(line.product_details, line.pricing_base) ||
-          line.pricing_base;
-        return (
-          sum +
-          calculatePricedLineTotal(
-            {
-              weight_amount: line.weight_amount,
-              meter_amount: line.meter_amount,
-              khada_amount: line.khada_amount,
-              grain_amount: line.grain_amount,
-            },
-            line.sale_price,
-            base
-          )
-        );
-      }, 0),
+      activeLines.reduce(
+        (sum, line) =>
+          sum + calculatePricedLineTotal(line, line.sale_price),
+        0
+      ),
     [activeLines]
   );
 
@@ -319,22 +257,17 @@ const AddSaleReturn = () => {
       );
     }
     for (const line of activeLines) {
-      const rem = line.remaining || {};
-      const units = getSelectedUnits(line.product_details || {});
-      for (const unit of units) {
-        const field = `${unit}_amount`;
-        const qty = Number(line[field] || 0);
-        const max = Number(rem[unit] || 0);
-        if (qty > max + 0.0001) {
-          newErrors[`qty_${line.sale_item_id}`] = true;
-          addMessage(
-            t("saleReturn.qtyExceedsRemaining", {
-              product: line.product_name,
-              defaultValue: `Return qty for ${line.product_name} exceeds remaining on the sale.`,
-            }),
-            "error"
-          );
-        }
+      const qty = Number.parseFloat(line.quantity || 0);
+      const max = Number(line.remaining_quantity || 0);
+      if (qty > max + 0.0001) {
+        newErrors[`qty_${line.sale_item_id}`] = true;
+        addMessage(
+          t("saleReturn.qtyExceedsRemaining", {
+            product: line.product_name,
+            defaultValue: `Return qty for ${line.product_name} exceeds remaining on the sale.`,
+          }),
+          "error"
+        );
       }
     }
     setErrors(newErrors);
@@ -351,19 +284,11 @@ const AddSaleReturn = () => {
       items: activeLines.map((line) => ({
         sale_item: line.sale_item_id,
         inventory: line.inventory_id,
-        weight_amount: Number(line.weight_amount || 0).toFixed(2),
-        meter_amount: Number(line.meter_amount || 0).toFixed(2),
-        khada_amount: Number(line.khada_amount || 0).toFixed(2),
-        grain_amount: Number(line.grain_amount || 0).toFixed(2),
+        ...quantityPayload(line.quantity),
         sale_price: Number(line.sale_price || 0).toFixed(2),
-        pricing_base:
-          defaultPricingBase(line.product_details, line.pricing_base) || null,
         note: line.note || "",
       })),
     };
-    if (currency === "AFN" && formValues.exchange_rate) {
-      payload.exchange_rate = Number(formValues.exchange_rate).toFixed(2);
-    }
 
     addMessage(t("saleReturn.saving", "Saving sale return…"), "info");
     handleAdd(payload);
@@ -437,7 +362,7 @@ const AddSaleReturn = () => {
                 value={selectedSale || null}
                 onChange={(val) => setSaleId(val?.id ? String(val.id) : "")}
                 getOptionLabel={(s) =>
-                  `#${s.id} — ${s.customer_details?.name || t("common.unknown", "Customer")} · ${s.currency} · ${Number(s.total_amount || 0).toLocaleString()}`
+                  `#${s.id} — ${s.customer_details?.name || t("common.unknown", "Customer")} · ${formatShopMoney(s.total_amount || 0)}`
                 }
                 isOptionEqualToValue={(a, b) => a?.id === b?.id}
                 loading={salesLoading}
@@ -455,25 +380,6 @@ const AddSaleReturn = () => {
                 className={posControlClass}
               />
             </PosField>
-            <PosField label={t("common.currency")}>
-              <Input value={currency} disabled className={posControlClass} />
-            </PosField>
-            {currency === "AFN" ? (
-              <PosField label={t("sales.exchangeRate", "Exchange rate")}>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formValues.exchange_rate}
-                  onChange={(e) =>
-                    setFormValues((p) => ({
-                      ...p,
-                      exchange_rate: e.target.value,
-                    }))
-                  }
-                  className={posControlClass}
-                />
-              </PosField>
-            ) : null}
             <PosField
               label={t("saleReturn.customer")}
               className="sm:col-span-2"
@@ -506,99 +412,72 @@ const AddSaleReturn = () => {
                 )}
               </p>
             ) : (
-              lines.map((line) => {
-                const units = getSelectedUnits(line.product_details || {});
-                const rem = line.remaining || {};
-                const columns = 2 + units.length + (units.length >= 2 ? 1 : 0);
-                return (
-                  <PosCartLine key={line.sale_item_id} complete={line.include}>
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                        <input
-                          type="checkbox"
-                          checked={!!line.include}
-                          onChange={(e) =>
-                            updateLine(line.sale_item_id, {
-                              include: e.target.checked,
-                            })
-                          }
-                          className="h-4 w-4 rounded border-border"
-                        />
-                        <span>
-                          {line.product_name || "—"}
-                          {line.thickness ? ` (${line.thickness})` : ""}
-                        </span>
-                      </label>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
-                        {t("saleReturn.remaining", "Remaining")}:{" "}
-                        {units.map((u) => `${rem[u] || 0} ${u}`).join(" · ")}
-                      </span>
-                    </div>
-                    {line.include ? (
-                      <PosItemRow columns={columns}>
-                        {units.map((unit) => (
-                          <PosItemCell key={unit}>
-                            <PosField
-                              label={`${t(`sales.measurementLabels.${unit}`, unit)} (max ${rem[unit] || 0})`}
-                            >
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max={rem[unit] || undefined}
-                                value={line[`${unit}_amount`]}
-                                onChange={(e) =>
-                                  updateLineQty(
-                                    line.sale_item_id,
-                                    `${unit}_amount`,
-                                    e.target.value
-                                  )
-                                }
-                                className={cn(
-                                  posControlClass,
-                                  errors[`qty_${line.sale_item_id}`] &&
-                                    "border-destructive"
-                                )}
-                              />
-                            </PosField>
-                          </PosItemCell>
-                        ))}
-                        <PosItemCell>
-                          <PosField label={t("saleReturn.salePrice")}>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={line.sale_price}
-                              onChange={(e) =>
-                                updateLine(line.sale_item_id, {
-                                  sale_price: e.target.value,
-                                })
-                              }
-                              className={posControlClass}
-                            />
-                          </PosField>
-                        </PosItemCell>
-                        {units.length >= 2 ? (
-                          <PosItemCell>
-                            <PosField label={t("sales.pricingBase", "Price by")}>
-                              <PricingBaseSelect
-                                product={line.product_details}
-                                value={line.pricing_base}
-                                onChange={(v) =>
-                                  updateLine(line.sale_item_id, {
-                                    pricing_base: v,
-                                  })
-                                }
-                                className={posControlClass}
-                              />
-                            </PosField>
-                          </PosItemCell>
-                        ) : null}
-                      </PosItemRow>
-                    ) : null}
-                  </PosCartLine>
-                );
-              })
+              lines.map((line) => (
+                <PosCartLine key={line.sale_item_id} complete={line.include}>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={!!line.include}
+                        onChange={(e) =>
+                          updateLine(line.sale_item_id, {
+                            include: e.target.checked,
+                          })
+                        }
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <span>{line.product_name || "—"}</span>
+                    </label>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {t("saleReturn.remaining", "Remaining")}:{" "}
+                      {line.remaining_quantity} / {line.sold_quantity}{" "}
+                      {t("common.quantity", "qty")}
+                    </span>
+                  </div>
+                  {line.include ? (
+                    <PosItemRow columns={2}>
+                      <PosItemCell>
+                        <PosField
+                          label={`${t("common.quantity", "Quantity")} (max ${line.remaining_quantity})`}
+                        >
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max={line.remaining_quantity || undefined}
+                            value={line.quantity}
+                            onChange={(e) =>
+                              updateLine(line.sale_item_id, {
+                                quantity: e.target.value,
+                              })
+                            }
+                            className={cn(
+                              posControlClass,
+                              errors[`qty_${line.sale_item_id}`] &&
+                                "border-destructive"
+                            )}
+                          />
+                        </PosField>
+                      </PosItemCell>
+                      <PosItemCell>
+                        <PosField label={t("saleReturn.salePrice")}>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={line.sale_price}
+                            onChange={(e) =>
+                              updateLine(line.sale_item_id, {
+                                sale_price: e.target.value,
+                              })
+                            }
+                            className={posControlClass}
+                          />
+                        </PosField>
+                      </PosItemCell>
+                    </PosItemRow>
+                  ) : null}
+                </PosCartLine>
+              ))
             )}
           </PosItems>
         </PosMain>
@@ -606,10 +485,7 @@ const AddSaleReturn = () => {
         <PosSummary title={t("saleReturn.returnSummary")}>
           <PosTotalRow
             label={t("saleReturn.totalAmount")}
-            value={`${itemsSubtotal.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })} ${currency}`}
+            value={formatShopMoney(itemsSubtotal)}
             emphasize
           />
 
@@ -693,10 +569,7 @@ const AddSaleReturn = () => {
 
           <PosTotalRow
             label={t("saleReturn.creditedAmount", "Credited to customer AR")}
-            value={`${creditedAmount.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })} ${currency}`}
+            value={formatShopMoney(creditedAmount)}
           />
 
           <PosField label={t("saleReturn.notes")}>

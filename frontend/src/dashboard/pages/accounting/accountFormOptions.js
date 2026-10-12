@@ -24,7 +24,6 @@ export const ROLE_OPTIONS = [
 
 export const CURRENCY_OPTIONS = [
   { value: "AFN", label: "AFN", customLabel: "AFN" },
-  { value: "USD", label: "USD", customLabel: "USD" },
 ];
 
 export const CATEGORY_OPTIONS = [

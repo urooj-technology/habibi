@@ -1,17 +1,17 @@
 import React, { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { RotateCcw, ArrowLeft, User, Calendar, Wallet } from "lucide-react";
+import { RotateCcw, ArrowLeft, User, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import useFetchObject from "../../../../api/useFetchObject";
 import { useAuth } from "../../../../context/AuthContext";
 import {
   calculateSaleLineTotal,
-  defaultPricingBase,
-  getLineMeasurementEntries,
+  getLineQuantity,
   resolveLineProduct,
 } from "../../../../utils/measurementConversion";
+import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
   PosHeader,
@@ -26,11 +26,11 @@ import {
 import { FullPageLoader } from "../../../../components/LoadingScreen";
 import { InlineAlert } from "../../../../components/AlertMessage";
 
-const money = (amount) =>
-  Number(amount || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+const formatQty = (amount) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "—";
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+};
 
 const SaleReturnView = () => {
   const { t } = useTranslation();
@@ -46,23 +46,15 @@ const SaleReturnView = () => {
     error,
   } = useFetchObject(["sales-return", id], "sales-returns", id, token);
 
-  const currencyLabel = doc?.currency === "USD" ? "USD" : "AFN";
-
   const lines = useMemo(() => {
     const items = Array.isArray(doc?.items) ? doc.items : [];
     return items.map((item) => {
       const product = resolveLineProduct(item);
-      const pricingBase = defaultPricingBase(product, item.pricing_base);
-      const entries = getLineMeasurementEntries(item, product);
-      const priced =
-        entries.find((m) => m.unit === pricingBase) || entries[0] || null;
       return {
         id: item.id,
         name: item.inventory_details?.product_name || product.name || "—",
         note: item.note || "",
-        thickness: item.inventory_details?.thickness || "",
-        qty: priced?.amount ?? 0,
-        qtyUnit: priced?.unit || pricingBase || "",
+        qty: getLineQuantity(item),
         unitPrice: Number.parseFloat(item.sale_price) || 0,
         lineTotal: calculateSaleLineTotal(item),
       };
@@ -139,12 +131,6 @@ const SaleReturnView = () => {
                 </span>
               </div>
             </PosField>
-            <PosField label={t("common.currency")}>
-              <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs">
-                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                {currencyLabel}
-              </div>
-            </PosField>
             {doc.note ? (
               <PosField label={t("saleReturn.notes")} className="sm:col-span-2">
                 <div className="min-h-8 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
@@ -174,20 +160,20 @@ const SaleReturnView = () => {
                   >
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{row.name}</p>
-                      {(row.thickness || row.note) && (
+                      {row.note ? (
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {[row.thickness, row.note].filter(Boolean).join(" · ")}
+                          {row.note}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                     <div className="tabular-nums self-center">
-                      {row.qty} {row.qtyUnit}
+                      {row.qty > 0 ? formatQty(row.qty) : "—"}
                     </div>
                     <div className="tabular-nums self-center text-end">
-                      {money(row.unitPrice)}
+                      {formatShopMoney(row.unitPrice)}
                     </div>
                     <div className="tabular-nums self-center text-end font-semibold">
-                      {money(row.lineTotal)}
+                      {formatShopMoney(row.lineTotal)}
                     </div>
                   </div>
                 ))
@@ -199,16 +185,16 @@ const SaleReturnView = () => {
         <PosSummary title={t("saleReturn.returnSummary")}>
           <PosTotalRow
             label={t("saleReturn.totalAmount")}
-            value={`${money(total)} ${currencyLabel}`}
+            value={formatShopMoney(total)}
             emphasize
           />
           <PosTotalRow
             label={t("saleReturn.refundedAmount", "Cash / bank refund")}
-            value={`${money(refunded)} ${currencyLabel}`}
+            value={formatShopMoney(refunded)}
           />
           <PosTotalRow
             label={t("saleReturn.creditedAmount", "Credited to customer AR")}
-            value={`${money(credited)} ${currencyLabel}`}
+            value={formatShopMoney(credited)}
           />
         </PosSummary>
       </PosBody>

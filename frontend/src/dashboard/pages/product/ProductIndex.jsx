@@ -19,9 +19,6 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
 } from "@/compat/ui";
 import {
   Add as AddIcon,
@@ -59,10 +56,6 @@ const ProductIndex = () => {
     name: "",
     status: "",
     category: "",
-    is_weight: false,
-    is_meter: false,
-    is_khada: false,
-    is_grain: false,
   });
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -94,10 +87,6 @@ const ProductIndex = () => {
       filters.name,
       filters.category,
       filters.status,
-      filters.is_weight,
-      filters.is_meter,
-      filters.is_khada,
-      filters.is_grain,
     ],
     (() => {
       const params = new URLSearchParams();
@@ -107,10 +96,6 @@ const ProductIndex = () => {
       if (filters.name) params.append('name', filters.name);
       if (filters.category) params.append('category', filters.category);
       if (filters.status) params.append('status', filters.status);
-      if (filters.is_weight) params.append('is_weight', filters.is_weight);
-      if (filters.is_meter) params.append('is_meter', filters.is_meter);
-      if (filters.is_khada) params.append('is_khada', filters.is_khada);
-      if (filters.is_grain) params.append('is_grain', filters.is_grain);
       return `products/?${params.toString()}`;
     })(),
     token
@@ -241,14 +226,12 @@ const ProductIndex = () => {
         { id: "id", label: t("common.id", "ID"), align: "center" },
         { id: "name", label: t("product.name", "Name") },
         { id: "category", label: t("product.category", "Category") },
-        { id: "thickness", label: t("product.thickness", "Thickness") },
       ],
       rows: productsData || [],
       getCell: (row, col) => {
         if (col.id === "id") return `#${row.id}`;
         if (col.id === "name") return row.name || "—";
         if (col.id === "category") return row.category_details?.name || row.category_name || "—";
-        if (col.id === "thickness") return row.thickness || "—";
         return "—";
       },
     });
@@ -272,10 +255,6 @@ const ProductIndex = () => {
       name: "",
       status: "",
       category: "",
-      is_weight: false,
-      is_meter: false,
-      is_khada: false,
-      is_grain: false,
     });
     setFilterModalOpen(false);
   };
@@ -345,30 +324,6 @@ const ProductIndex = () => {
       {
         label: t("product.description"),
         value: selectedProduct.description || t("common.noDescription"),
-      },
-      {
-        label: t("product.isWeight", "Weight"),
-        value: selectedProduct.is_weight ? t("common.yes") : t("common.no"),
-        chip: true,
-        chipColor: selectedProduct.is_weight ? "success" : "default",
-      },
-      {
-        label: t("product.isMeter"),
-        value: selectedProduct.is_meter ? t("common.yes") : t("common.no"),
-        chip: true,
-        chipColor: selectedProduct.is_meter ? "success" : "default",
-      },
-      {
-        label: t("product.isKhada"),
-        value: selectedProduct.is_khada ? t("common.yes") : t("common.no"),
-        chip: true,
-        chipColor: selectedProduct.is_khada ? "success" : "default",
-      },
-      {
-        label: t("product.isGrain"),
-        value: selectedProduct.is_grain ? t("common.yes") : t("common.no"),
-        chip: true,
-        chipColor: selectedProduct.is_grain ? "success" : "default",
       },
       { label: t("common.id"), value: selectedProduct.id },
       {
@@ -559,62 +514,6 @@ const ProductIndex = () => {
               { value: "INACTIVE", label: t("common.inactive") },
             ]}
           />
-
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              {t("product.measurementType")}
-            </Typography>
-            <FormGroup row>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={filters.is_weight}
-                    onChange={(e) =>
-                      setFilters({ ...filters, is_weight: e.target.checked })
-                    }
-                    name="is_weight"
-                  />
-                }
-                label={t("product.isWeight", "Weight")}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={filters.is_meter}
-                    onChange={(e) =>
-                      setFilters({ ...filters, is_meter: e.target.checked })
-                    }
-                    name="is_meter"
-                  />
-                }
-                label={t("product.isMeter", "Meter")}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={filters.is_khada}
-                    onChange={(e) =>
-                      setFilters({ ...filters, is_khada: e.target.checked })
-                    }
-                    name="is_khada"
-                  />
-                }
-                label={t("product.isKhada", "Khada")}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={filters.is_grain}
-                    onChange={(e) =>
-                      setFilters({ ...filters, is_grain: e.target.checked })
-                    }
-                    name="is_grain"
-                  />
-                }
-                label={t("product.isGrain", "Dana")}
-              />
-            </FormGroup>
-          </Box>
 
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
             <Button onClick={handleFilterReset} color="inherit">

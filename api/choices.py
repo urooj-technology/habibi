@@ -3,11 +3,6 @@
 from django.db import models
 
 
-class CurrencyCode(models.TextChoices):
-    AFN = "AFN", "AFN"
-    USD = "USD", "USD"
-
-
 class DocumentStatus(models.TextChoices):
     DRAFT = "DRAFT", "Draft"
     CONFIRMED = "CONFIRMED", "Confirmed"
@@ -21,7 +16,7 @@ class SaleDocumentKind(models.TextChoices):
 
 
 class AccountCategory(models.TextChoices):
-    """Chart-of-accounts grouping aligned with the ERP proposal."""
+    """Chart-of-accounts grouping."""
 
     CURRENT_ASSET = "CURRENT_ASSET", "Current assets"
     FIXED_ASSET = "FIXED_ASSET", "Fixed assets"

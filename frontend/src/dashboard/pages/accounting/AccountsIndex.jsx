@@ -55,7 +55,6 @@ const AccountsIndex = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [currencyFilter, setCurrencyFilter] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -69,19 +68,16 @@ const AccountsIndex = () => {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, currencyFilter]);
+  }, [debouncedSearch]);
 
   const accountsEndpoint = useMemo(() => {
     const params = new URLSearchParams({
       page_size: String(rowsPerPage),
       page: String(page + 1),
     });
-    if (currencyFilter && currencyFilter !== "all") {
-      params.append("currency", currencyFilter);
-    }
     if (debouncedSearch) params.append("search", debouncedSearch);
     return `accounting/accounts/?${params.toString()}`;
-  }, [rowsPerPage, currencyFilter, page, debouncedSearch]);
+  }, [rowsPerPage, page, debouncedSearch]);
 
   const {
     data: accountsResp,
@@ -91,7 +87,7 @@ const AccountsIndex = () => {
     refetch,
     isFetching,
   } = useFetchObjects(
-    ["accounting-accounts", rowsPerPage, currencyFilter, page, debouncedSearch],
+    ["accounting-accounts", rowsPerPage, page, debouncedSearch],
     accountsEndpoint,
     token
   );
@@ -174,17 +170,6 @@ const AccountsIndex = () => {
         label: t("accounting.accountName", "Account"),
         sortable: true,
         minWidth: 180,
-      },
-      {
-        id: "currency",
-        label: t("common.currency", "Currency"),
-        sortable: true,
-        minWidth: 88,
-        format: (value) => (
-          <Badge variant={value === "USD" ? "default" : "secondary"} className="font-bold">
-            {value || "—"}
-          </Badge>
-        ),
       },
       {
         id: "account_type",
@@ -345,41 +330,7 @@ const AccountsIndex = () => {
             />
           </FilterField>
 
-          <FilterField label={t("accounting.filterByCurrency", "Currency")}>
-            <Select
-              value={currencyFilter}
-              onValueChange={(v) => {
-                setCurrencyFilter(v);
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="h-9 w-full min-w-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("accounting.currencyAll", "All (AFN & USD)")}</SelectItem>
-                <SelectItem value="AFN">AFN</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-              </SelectContent>
-            </Select>
-          </FilterField>
         </ListToolbar>
-
-        <div className="border-b border-border px-3 py-2 sm:px-4">
-          <p className="text-xs text-muted-foreground">
-            {currencyFilter === "USD"
-              ? t(
-                  "accounting.accountDirectoryHintUsd",
-                  "USD accounts only. Amounts match journal lines in US dollars."
-                )
-              : currencyFilter === "AFN"
-                ? t("accounting.accountDirectoryHintAfn", "AFN accounts only.")
-                : t(
-                    "accounting.accountDirectoryHint",
-                    "Each row shows debit, credit, and balance in that account’s currency."
-                  )}
-          </p>
-        </div>
 
         <ReusableTable
           columns={columns}

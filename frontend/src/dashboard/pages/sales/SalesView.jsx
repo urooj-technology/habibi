@@ -8,7 +8,6 @@ import {
   Printer,
   User,
   Calendar,
-  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,11 +16,10 @@ import useFetchObject from "../../../api/useFetchObject";
 import { useAuth } from "../../../context/AuthContext";
 import {
   calculateSaleLineTotal,
-  defaultPricingBase,
-  getLineMeasurementEntries,
+  getLineQuantity,
   resolveLineProduct,
-  UNIT_LABEL_KEYS,
 } from "../../../utils/measurementConversion";
+import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
   PosHeader,
@@ -38,12 +36,6 @@ import {
 import { FullPageLoader } from "../../../components/LoadingScreen";
 import { InlineAlert } from "../../../components/AlertMessage";
 import SalesPrint from "./SalesPrint";
-
-const money = (amount) =>
-  Number(amount || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 
 const formatQty = (amount) => {
   const n = Number(amount);
@@ -66,17 +58,10 @@ const SalesView = () => {
     error,
   } = useFetchObject(["sale", id], "sales", id, token);
 
-  const currencyLabel =
-    sale?.currency === "USD" ? t("sales.usd") : t("sales.afn");
-
   const lines = useMemo(() => {
     const items = Array.isArray(sale?.sale_items) ? sale.sale_items : [];
     return items.map((item) => {
       const product = resolveLineProduct(item);
-      const pricingBase = defaultPricingBase(product, item.pricing_base);
-      const entries = getLineMeasurementEntries(item, product);
-      const priced =
-        entries.find((m) => m.unit === pricingBase) || entries[0] || null;
       return {
         id: item.id,
         name:
@@ -84,8 +69,7 @@ const SalesView = () => {
           product.name ||
           "—",
         note: item.note || "",
-        qty: priced?.amount ?? 0,
-        qtyUnit: priced?.unit || pricingBase || "",
+        qty: getLineQuantity(item),
         unitPrice: Number.parseFloat(item.sale_price) || 0,
         lineTotal: calculateSaleLineTotal(item),
       };
@@ -230,18 +214,6 @@ const SalesView = () => {
               </div>
             </PosField>
 
-            <PosField label={t("sales.currency")}>
-              <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium">
-                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{currencyLabel}</span>
-                {sale.exchange_rate ? (
-                  <span className="text-muted-foreground">
-                    · {t("sales.exchangeRate")}: {sale.exchange_rate}
-                  </span>
-                ) : null}
-              </div>
-            </PosField>
-
             <PosField label={t("common.status")}>
               <div
                 className={cn(
@@ -302,22 +274,17 @@ const SalesView = () => {
                       </PosItemCell>
                       <PosItemCell>
                         <p className="text-sm font-semibold tabular-nums">
-                          {row.qtyUnit
-                            ? `${formatQty(row.qty)} ${t(
-                                UNIT_LABEL_KEYS[row.qtyUnit] || row.qtyUnit,
-                                row.qtyUnit
-                              )}`
-                            : "—"}
+                          {row.qty > 0 ? formatQty(row.qty) : "—"}
                         </p>
                       </PosItemCell>
                       <PosItemCell className="text-end">
                         <p className="text-sm tabular-nums">
-                          {money(row.unitPrice)}
+                          {formatShopMoney(row.unitPrice)}
                         </p>
                       </PosItemCell>
                       <PosItemCell className="text-end">
                         <p className="text-sm font-bold tabular-nums text-foreground">
-                          {money(row.lineTotal)}
+                          {formatShopMoney(row.lineTotal)}
                         </p>
                       </PosItemCell>
                     </div>
@@ -342,11 +309,11 @@ const SalesView = () => {
         <PosSummary title={t("payment.summary", "Payment summary")}>
           <PosTotalRow
             label={t("sales.itemsSubtotal", "Items subtotal")}
-            value={`${money(totalAmount)} ${currencyLabel}`}
+            value={formatShopMoney(totalAmount)}
           />
           <PosTotalRow
             label={t("sales.freightKaraya", "Freight")}
-            value={`${money(freightAmt)} ${currencyLabel}`}
+            value={formatShopMoney(freightAmt)}
             muted
           />
           <p className="-mt-1 text-[10px] text-muted-foreground">
@@ -358,13 +325,13 @@ const SalesView = () => {
           <div className="border-t border-border pt-2">
             <PosTotalRow
               label={t("sales.totalAmount")}
-              value={`${money(totalAmount)} ${currencyLabel}`}
+              value={formatShopMoney(totalAmount)}
               emphasize
             />
           </div>
           <PosTotalRow
             label={t("sales.receivedAmount")}
-            value={`${money(receivedAmount)} ${currencyLabel}`}
+            value={formatShopMoney(receivedAmount)}
           />
           <div
             className={cn(
@@ -376,7 +343,7 @@ const SalesView = () => {
           >
             <PosTotalRow
               label={t("sales.remainingAmount")}
-              value={`${money(remainingAmount)} ${currencyLabel}`}
+              value={formatShopMoney(remainingAmount)}
               emphasize
             />
           </div>

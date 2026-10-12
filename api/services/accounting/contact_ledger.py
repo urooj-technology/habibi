@@ -266,8 +266,6 @@ def _period_total_payments(
             sale_date__date__gte=date_from,
             sale_date__date__lte=date_to,
         )
-        if currency:
-            qs = qs.filter(currency=currency)
         on_invoice = Decimal(qs.aggregate(v=Sum("received_amount"))["v"] or 0)
     else:
         qs = Purchase.objects.filter(
@@ -275,8 +273,6 @@ def _period_total_payments(
             purchase_date__gte=date_from,
             purchase_date__lte=date_to,
         )
-        if currency:
-            qs = qs.filter(currency=currency)
         on_invoice = Decimal(qs.aggregate(v=Sum("received_amount"))["v"] or 0)
 
     total = (on_invoice + on_subledger).quantize(MONEY)
@@ -323,17 +319,8 @@ def _product_summary(items, product_attr: str) -> tuple[str, str]:
         if product:
             names.append(getattr(product, "name", str(product)))
 
-        qty_parts = []
-        for field, suffix in (
-            ("weight_amount", "kg"),
-            ("meter_amount", "m"),
-            ("khada_amount", "khada"),
-            ("grain_amount", "grain"),
-        ):
-            value = getattr(item, field, None)
-            if value:
-                qty_parts.append(f"{value} {suffix}")
-        quantities.append(", ".join(qty_parts) if qty_parts else "1")
+        qty = getattr(item, "quantity", None)
+        quantities.append(str(qty) if qty else "1")
 
     return ", ".join(names) or "-", ", ".join(quantities) or "-"
 
@@ -372,9 +359,6 @@ def _sales_history(customer_id: int, date_from: str, date_to: str, currency: str
         .prefetch_related("sale_items__inventory__product")
         .order_by("-sale_date", "-id")
     )
-    if currency:
-        qs = qs.filter(currency=currency)
-
     history = []
     for sale in qs[:100]:
         products, qty = _product_summary(sale.sale_items.all(), "inventory")
@@ -388,7 +372,6 @@ def _sales_history(customer_id: int, date_from: str, date_to: str, currency: str
                 "total": _money(total),
                 "status": "Paid" if sale.is_paid else ("Partial" if paid else "Pending"),
                 "invoice_date": sale.sale_date.date().isoformat() if sale.sale_date else "",
-                "currency": sale.currency,
                 "doc_type": "SALE",
             }
         )
@@ -399,8 +382,6 @@ def _sales_history(customer_id: int, date_from: str, date_to: str, currency: str
         return_date__date__gte=date_from,
         return_date__date__lte=date_to,
     ).prefetch_related("items__inventory__product")
-    if currency:
-        ret_qs = ret_qs.filter(currency=currency)
     for ret in ret_qs.order_by("-return_date", "-id")[:50]:
         products, qty = _product_summary(ret.items.all(), "inventory")
         total = Decimal(ret.total_amount or 0)
@@ -414,7 +395,6 @@ def _sales_history(customer_id: int, date_from: str, date_to: str, currency: str
                 "invoice_date": ret.return_date.date().isoformat()
                 if hasattr(ret.return_date, "date")
                 else str(ret.return_date)[:10],
-                "currency": ret.currency,
                 "doc_type": "RETURN",
             }
         )
@@ -429,9 +409,6 @@ def _purchase_history(supplier_id: int, date_from: str, date_to: str, currency: 
         .prefetch_related("purchase_items__product")
         .order_by("-purchase_date", "-id")
     )
-    if currency:
-        qs = qs.filter(currency=currency)
-
     history = []
     for purchase in qs[:100]:
         products, qty = _product_summary(purchase.purchase_items.all(), "product")
@@ -445,7 +422,6 @@ def _purchase_history(supplier_id: int, date_from: str, date_to: str, currency: 
                 "total": _money(total),
                 "status": "Paid" if purchase.is_paid else ("Partial" if paid else "Pending"),
                 "purchase_date": purchase.purchase_date.isoformat() if purchase.purchase_date else "",
-                "currency": purchase.currency,
             }
         )
     return history
@@ -458,8 +434,6 @@ def _customer_payment_history(customer_id: int, date_from: str, date_to: str, cu
         sale_date__date__lte=date_to,
         received_amount__gt=0,
     ).order_by("-sale_date", "-id")
-    if currency:
-        qs = qs.filter(currency=currency)
     return [
         {
             "payment_date": sale.sale_date.date().isoformat() if sale.sale_date else "",
@@ -479,8 +453,6 @@ def _supplier_payment_history(supplier_id: int, date_from: str, date_to: str, cu
         purchase_date__lte=date_to,
         received_amount__gt=0,
     ).order_by("-purchase_date", "-id")
-    if currency:
-        qs = qs.filter(currency=currency)
     return [
         {
             "payment_date": purchase.purchase_date.isoformat() if purchase.purchase_date else "",
@@ -505,9 +477,6 @@ def _customer_totals(contact_id: int, date_from: str, date_to: str, currency: st
         return_date__date__gte=date_from,
         return_date__date__lte=date_to,
     )
-    if currency:
-        sales = sales.filter(currency=currency)
-        returns = returns.filter(currency=currency)
     return {
         "total_sales": Decimal(sales.aggregate(v=Sum("total_amount"))["v"] or 0),
         "payments_received": Decimal(sales.aggregate(v=Sum("received_amount"))["v"] or 0),
@@ -521,8 +490,6 @@ def _supplier_totals(contact_id: int, date_from: str, date_to: str, currency: st
         purchase_date__gte=date_from,
         purchase_date__lte=date_to,
     )
-    if currency:
-        purchases = purchases.filter(currency=currency)
     return {
         "total_purchases": Decimal(purchases.aggregate(v=Sum("total_amount"))["v"] or 0),
         "payments": Decimal(purchases.aggregate(v=Sum("received_amount"))["v"] or 0),

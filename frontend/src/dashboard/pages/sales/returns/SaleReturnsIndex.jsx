@@ -16,7 +16,7 @@ import {
 import useFetchObjects from "../../../../api/useFetchObjects";
 import useDelete from "../../../../api/useDelete";
 import { useAuth } from "../../../../context/AuthContext";
-import { formatCurrency } from "../../../../utils/formatters";
+import { formatShopMoney } from "@/config/shopConfig";
 import PageHeader from "../../../../components/PageHeader";
 import { InlineAlert } from "../../../../components/AlertMessage";
 import {
@@ -26,9 +26,6 @@ import {
   FilterField,
   FilterSearch,
 } from "../../../../components/ListPage";
-
-const money = (amount, currency) =>
-  formatCurrency(Number(amount || 0), currency || "AFN");
 
 const SaleReturnsIndex = () => {
   const { t } = useTranslation();
@@ -118,7 +115,6 @@ const SaleReturnsIndex = () => {
                 <TableHead>{t("saleReturn.returnDate")}</TableHead>
                 <TableHead>{t("saleReturn.sale")}</TableHead>
                 <TableHead>{t("saleReturn.customer")}</TableHead>
-                <TableHead>{t("common.currency")}</TableHead>
                 <TableHead className="text-end">{t("saleReturn.totalAmount")}</TableHead>
                 <TableHead className="text-end">
                   {t("saleReturn.refundedAmount", "Refunded")}
@@ -132,13 +128,13 @@ const SaleReturnsIndex = () => {
             <TableBody>
               {isLoading && rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     {t("saleReturn.noReturns", "No sale returns yet.")}
                   </TableCell>
                 </TableRow>
@@ -165,15 +161,14 @@ const SaleReturnsIndex = () => {
                       <TableCell>
                         {row.customer_details?.name || "—"}
                       </TableCell>
-                      <TableCell>{row.currency}</TableCell>
                       <TableCell className="text-end tabular-nums font-medium">
-                        {money(total, row.currency)}
+                        {formatShopMoney(total)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {money(refunded, row.currency)}
+                        {formatShopMoney(refunded)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {money(credited, row.currency)}
+                        {formatShopMoney(credited)}
                       </TableCell>
                       <TableCell className="text-end">
                         <div className="inline-flex gap-1">

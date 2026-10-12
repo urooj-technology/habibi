@@ -2,18 +2,9 @@ import React, { forwardRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   calculatePricedLineTotal,
-  defaultPricingBase,
-  getLineMeasurementEntries,
+  getLineQuantity,
   resolveLineProduct,
-  UNIT_LABEL_KEYS,
 } from "../../../utils/measurementConversion";
-
-const UNIT_SHORT = {
-  weight: "کگ",
-  meter: "متر",
-  khada: "خرده",
-  grain: "دانه",
-};
 
 /**
  * Print-ready RTL purchase bill (mirrors SalesPrint layout).
@@ -33,23 +24,17 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
         item.product_details?.name ||
         item.inventory_details?.product_details?.name ||
         "جنس";
-      const pricingBase = defaultPricingBase(product, item.pricing_base);
-      const measurements = getLineMeasurementEntries(item, product);
-      const priced =
-        measurements.find((m) => m.unit === pricingBase) || measurements[0] || null;
-      const qty = priced?.amount ?? 0;
+      const qty = getLineQuantity(item);
       const unitPrice = Number.parseFloat(item.buy_price) || 0;
-      const lineTotal = calculatePricedLineTotal(item, item.buy_price, pricingBase);
+      const lineTotal = calculatePricedLineTotal(item, item.buy_price);
 
       return {
         index: index + 1,
         productName,
         note: item.note || item.line_memo || "",
-        qtyUnit: priced?.unit || pricingBase || "",
         qty,
         unitPrice,
         lineTotal,
-        thickness: item.inventory_details?.thickness || item.thickness || product.thickness,
       };
     });
 
@@ -64,12 +49,6 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
     const freightAmount = Math.max(0, Number.parseFloat(purchase.freight_amount) || 0);
     const receivedAmount = Math.max(0, Number.parseFloat(purchase.received_amount) || 0);
     const remainingAmount = invoiceTotal - receivedAmount;
-    const currency =
-      purchase.currency === "USD"
-        ? "دالر"
-        : purchase.currency === "AFN"
-          ? "افغانی"
-          : purchase.currency || "افغانی";
 
     const dateSource = purchase.purchase_date || purchase.created_at;
     const date = dateSource ? new Date(dateSource) : new Date();
@@ -81,7 +60,6 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
       freightAmount,
       receivedAmount,
       remainingAmount,
-      currency,
       currentDate,
       supplierName: purchase.supplier_details?.name || "عرضه کننده",
       supplierContact: purchase.supplier_details?.contact || "",
@@ -150,10 +128,6 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
             <span style={s.metaLabel}>تاریخ</span>
             <span style={s.metaValue}>{bill.currentDate}</span>
           </div>
-          <div style={s.metaPair}>
-            <span style={s.metaLabel}>واحد پول</span>
-            <span style={s.metaValue}>{bill.currency}</span>
-          </div>
         </div>
       </section>
 
@@ -182,22 +156,15 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
                   <td style={s.tdCenter}>{row.index}</td>
                   <td style={{ ...s.td, textAlign: "right" }}>
                     <div style={s.productName}>{row.productName}</div>
-                    {row.thickness ? (
-                      <div style={s.productMeta}>ضخامت: {row.thickness}</div>
-                    ) : null}
                   </td>
                   <td style={{ ...s.td, textAlign: "right", color: "#64748b" }}>
                     {row.note || "—"}
                   </td>
                   <td style={s.tdCenter}>
-                    {!row.qty || !row.qtyUnit ? (
+                    {!row.qty ? (
                       "—"
                     ) : (
-                      <span style={s.qtySingle}>
-                        {formatQty(row.qty)}{" "}
-                        {UNIT_SHORT[row.qtyUnit] ||
-                          t(UNIT_LABEL_KEYS[row.qtyUnit], row.qtyUnit)}
-                      </span>
+                      <span style={s.qtySingle}>{formatQty(row.qty)}</span>
                     )}
                   </td>
                   <td style={s.tdCenter}>{formatNumber(row.unitPrice)}</td>
@@ -225,36 +192,26 @@ const PurchasePrint = forwardRef(({ purchase }, ref) => {
         <div style={s.totalsCard}>
           <div style={s.totalRow}>
             <span>مجموع اقلام</span>
-            <strong>
-              {formatNumber(bill.invoiceTotal)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.invoiceTotal)}</strong>
           </div>
           <div style={{ ...s.totalRow, ...s.totalMuted }}>
             <span>
               کرایه
               <span style={s.infoTag}> اطلاعاتی </span>
             </span>
-            <span>
-              {formatNumber(bill.freightAmount)} {bill.currency}
-            </span>
+            <span>{formatNumber(bill.freightAmount)}</span>
           </div>
           <div style={{ ...s.totalRow, ...s.totalEmph }}>
             <span>جمع قابل پرداخت</span>
-            <strong>
-              {formatNumber(bill.invoiceTotal)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.invoiceTotal)}</strong>
           </div>
           <div style={s.totalRow}>
             <span>پرداخت شده</span>
-            <span>
-              {formatNumber(bill.receivedAmount)} {bill.currency}
-            </span>
+            <span>{formatNumber(bill.receivedAmount)}</span>
           </div>
           <div style={{ ...s.totalRow, ...s.remainingRow }}>
             <span>باقیمانده</span>
-            <strong>
-              {formatNumber(bill.remainingAmount)} {bill.currency}
-            </strong>
+            <strong>{formatNumber(bill.remainingAmount)}</strong>
           </div>
         </div>
       </section>

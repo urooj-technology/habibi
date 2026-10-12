@@ -5,7 +5,7 @@ from api.models.data.sale import Sale
 
 
 class SaleFilter(django_filters.FilterSet):
-    """Filters for sale list: customer, currency, sale date range, payment bucket."""
+    """Filters for sale list: customer, sale date range, payment bucket."""
 
     date_from = django_filters.DateFilter(
         field_name="sale_date",
@@ -26,7 +26,7 @@ class SaleFilter(django_filters.FilterSet):
 
     class Meta:
         model = Sale
-        fields = ["customer", "currency"]
+        fields = ["customer"]
 
     def filter_payment_status(self, queryset, name, value):
         if not value:

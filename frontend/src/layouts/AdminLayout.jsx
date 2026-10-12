@@ -143,11 +143,6 @@ const menuItems = [
         path: "/app/accounting/opening-balances",
         permission: "accounting.view",
       },
-      {
-        title: "currencyConversion.title",
-        path: "/app/accounting/currency-conversion",
-        permission: "accounting.view",
-      },
     ],
   },
   {

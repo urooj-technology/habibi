@@ -17,6 +17,6 @@ class PayrollRunViewSet(PostableDocumentMixin, DataRootViewSet):
     serializer_class = PayrollRunSerializer
     permission_classes = [ModuleCRUDPermission("hr")]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["status", "currency"]
+    filterset_fields = ["status"]
     search_fields = ["reference", "memo"]
     pagination_class = CustomPagination

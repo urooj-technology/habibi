@@ -11,7 +11,6 @@ class ProductSerializer(DataRootSerializer):
         model = Product
         fields = "__all__"
         extra_kwargs = {
-            # Model unique=True includes soft-deleted rows; validate in validate_name().
             "name": {"validators": []},
         }
 
@@ -39,7 +38,6 @@ class ProductSerializer(DataRootSerializer):
             return name
 
         if existing.is_deleted:
-            # Re-create with an existing deleted name → restore that row in create().
             self._restore_product = existing
             return name
 

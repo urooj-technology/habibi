@@ -1,6 +1,8 @@
-from django.db import models
-from decimal import Decimal
 from collections import defaultdict
+from decimal import Decimal
+
+from django.db import models
+
 from api.models.data.base import DataRoot
 
 
@@ -13,41 +15,30 @@ class Customer(DataRoot):
         return self.name
 
     def get_financial_summary(self):
-        """
-        Summary per currency from sale invoices (net of returns) and AR subledger.
-
-        Total comes from sales minus sale returns. Paid and remaining match the
-        customer ledger (includes journal receipts, not only received_amount).
-        """
+        """Invoice totals and AR subledger (single-currency amounts)."""
         from api.services.accounting.contact_ledger import (
             financial_summary_from_invoices_and_subledger,
         )
 
-        invoice_totals: dict[str, Decimal] = defaultdict(Decimal)
-        paid_on_invoices: dict[str, Decimal] = defaultdict(Decimal)
+        invoice_total = Decimal("0")
+        paid_on_invoices = Decimal("0")
 
         for sale in self.sales.all():
-            if not sale.currency:
-                continue
-            invoice_totals[sale.currency] += Decimal(sale.total_amount or 0)
-            paid_on_invoices[sale.currency] += Decimal(sale.received_amount or 0)
+            invoice_total += Decimal(sale.total_amount or 0)
+            paid_on_invoices += Decimal(sale.received_amount or 0)
 
         for ret in self.sale_returns.filter(is_deleted=False):
-            if not ret.currency:
-                continue
-            invoice_totals[ret.currency] -= Decimal(ret.total_amount or 0)
-            # Cash refunds reduce paid-on-invoice cash, same currency
-            paid_on_invoices[ret.currency] -= Decimal(ret.refunded_amount or 0)
+            invoice_total -= Decimal(ret.total_amount or 0)
+            paid_on_invoices -= Decimal(ret.refunded_amount or 0)
 
-        for ccy in list(invoice_totals.keys()):
-            if invoice_totals[ccy] < 0:
-                invoice_totals[ccy] = Decimal("0")
-            if paid_on_invoices.get(ccy, Decimal("0")) < 0:
-                paid_on_invoices[ccy] = Decimal("0")
+        if invoice_total < 0:
+            invoice_total = Decimal("0")
+        if paid_on_invoices < 0:
+            paid_on_invoices = Decimal("0")
 
         return financial_summary_from_invoices_and_subledger(
             kind="customer",
             contact_id=self.pk,
-            invoice_totals_by_currency=dict(invoice_totals),
-            paid_on_invoices_by_currency=dict(paid_on_invoices),
+            invoice_totals_by_currency={"AFN": invoice_total},
+            paid_on_invoices_by_currency={"AFN": paid_on_invoices},
         )

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from api.models.data.sale_return import SaleReturn, SaleReturnItem
 from api.serializers.data.base import DataRootSerializer
-from api.serializers.data.sale import _product_measurement_details
+from api.serializers.data.sale import _product_details
 
 
 class SaleReturnItemSerializer(DataRootSerializer):
@@ -22,9 +22,8 @@ class SaleReturnItemSerializer(DataRootSerializer):
             "id": inv.id,
             "product": inv.product_id,
             "product_name": product.name if product else None,
-            "product_details": _product_measurement_details(product),
-            "thickness": inv.thickness,
-            "currency": getattr(inv, "currency", None),
+            "product_details": _product_details(product),
+            "quantity": inv.quantity,
         }
 
 
@@ -55,7 +54,6 @@ class SaleReturnSerializer(DataRootSerializer):
         return {
             "id": sale.id,
             "sale_date": sale.sale_date,
-            "currency": sale.currency,
             "total_amount": sale.total_amount,
             "customer_id": sale.customer_id,
         }

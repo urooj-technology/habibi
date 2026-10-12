@@ -1,6 +1,8 @@
-from django.db import models
 from decimal import Decimal
+
+from django.db import models
 from django.utils import timezone
+
 from .base import DataRoot
 from api.models.data.product import Product
 
@@ -10,15 +12,8 @@ class Purchase(DataRoot):
         "Supplier", on_delete=models.CASCADE, related_name="purchases"
     )
     is_paid = models.BooleanField(default=False)
-    currency = models.CharField(max_length=5, choices=[("AFN", "AFN"), ("USD", "USD")])
-    exchange_rate = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
     purchase_date = models.DateField(default=timezone.now)
     total_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=Decimal("0.00")
-    )
-    equivalent_amount = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
     received_amount = models.DecimalField(
@@ -30,29 +25,14 @@ class Purchase(DataRoot):
         null=True,
         blank=True,
         related_name="purchases_cash_bank",
-        help_text="Cash/bank account for amounts paid at purchase time (GL cash leg).",
+        help_text="Cash/bank account for amounts paid at purchase time.",
     )
 
     def __str__(self):
-        return f"Purchase #{self.pk} - {self.total_amount} {self.currency}"
-
-    def calculate_equivalent_amount(self):
-        """Calculate the equivalent amount by dividing total_amount by exchange_rate if currency is AFN."""
-        if self.currency == "AFN" and self.exchange_rate > 0:
-            self.equivalent_amount = self.total_amount / self.exchange_rate
-        else:
-            self.equivalent_amount = Decimal("0.00")
+        return f"Purchase #{self.pk} — {self.total_amount}"
 
     def save(self, *args, **kwargs):
-        # Call the calculate_equivalent_amount method before saving the purchase
-        self.calculate_equivalent_amount()
-
-        # Set is_paid to True if received_amount equals total_amount
-        if self.received_amount == self.total_amount:
-            self.is_paid = True
-        else:
-            self.is_paid = False  # Ensure it's False if not fully paid
-
+        self.is_paid = self.received_amount == self.total_amount
         super().save(*args, **kwargs)
 
 
@@ -63,37 +43,16 @@ class PurchaseItem(DataRoot):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="purchases"
     )
-    thickness = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    weight_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-
-    meter_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    khada_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    grain_amount = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+    quantity = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
     buy_price = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    # Runtime choice on dual-measurement lines: which qty × buy_price
-    pricing_base = models.CharField(
-        max_length=20,
-        choices=[
-            ("weight", "Weight"),
-            ("meter", "Meter"),
-            ("khada", "Khada"),
-            ("grain", "Grain"),
-        ],
-        null=True,
-        blank=True,
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
 
     def __str__(self):
-        return f"PurchaseItem #{self.pk} for Purchase #{self.purchase.id}"
+        return f"PurchaseItem #{self.pk} for Purchase #{self.purchase_id}"
+
+    @property
+    def line_total(self):
+        return (self.quantity or Decimal("0")) * (self.buy_price or Decimal("0"))

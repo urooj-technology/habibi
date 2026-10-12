@@ -52,7 +52,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import useFetchObjects from "../../../api/useFetchObjects";
 import useDelete from "../../../api/useDelete";
 import { useAuth } from "../../../context/AuthContext";
-import { formatCurrency } from "../../../utils/formatters";
+import { formatShopMoney } from "@/config/shopConfig";
 import { printDataTable } from "../../../utils/printDataTable";
 
 import PageHeader from "../../../components/PageHeader";
@@ -103,7 +103,6 @@ const SalesIndex = () => {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currencyFilter, setCurrencyFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -128,12 +127,11 @@ const SalesIndex = () => {
     params.append("page", String(page + 1));
     params.append("page_size", "20");
     if (customerFilter?.id) params.append("customer", String(customerFilter.id));
-    if (currencyFilter && currencyFilter !== "all") params.append("currency", currencyFilter);
     if (dateFrom) params.append("date_from", dateFrom);
     if (dateTo) params.append("date_to", dateTo);
     if (paymentStatus && paymentStatus !== "all") params.append("payment_status", paymentStatus);
     return `sales/?${params.toString()}`;
-  }, [debouncedSearch, page, customerFilter?.id, currencyFilter, dateFrom, dateTo, paymentStatus]);
+  }, [debouncedSearch, page, customerFilter?.id, dateFrom, dateTo, paymentStatus]);
 
   const {
     data: sales,
@@ -141,7 +139,7 @@ const SalesIndex = () => {
     isError,
     refetch: refetchSales,
   } = useFetchObjects(
-    ["sales", debouncedSearch, page, 20, customerFilter?.id, currencyFilter, dateFrom, dateTo, paymentStatus],
+    ["sales", debouncedSearch, page, 20, customerFilter?.id, dateFrom, dateTo, paymentStatus],
     salesListEndpoint,
     token
   );
@@ -191,7 +189,7 @@ const SalesIndex = () => {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, customerFilter, currencyFilter, dateFrom, dateTo, paymentStatus]);
+  }, [debouncedSearch, customerFilter, dateFrom, dateTo, paymentStatus]);
 
   const { handleDelete, ConfirmDialog } = useDelete("sales", token, refetchSales);
 
@@ -224,22 +222,19 @@ const SalesIndex = () => {
         { id: "total", label: t("sales.totalAmount", "Total"), align: "right" },
         { id: "received", label: t("sales.receivedAmount", "Received"), align: "right" },
         { id: "remaining", label: t("sales.remainingAmount", "Remaining"), align: "right" },
-        { id: "currency", label: t("sales.currency", "Currency"), align: "center" },
       ],
       rows: salesData,
       getCell: (row, col) => {
-        const ccy = row.currency || "AFN";
         if (col.id === "id") return `#${row.id}`;
         if (col.id === "customer") return row.customer_details?.name || "—";
         if (col.id === "date") {
           return row.sale_date ? new Date(row.sale_date).toLocaleDateString() : "—";
         }
-        if (col.id === "total") return formatCurrency(row.total_amount || 0, ccy);
-        if (col.id === "received") return formatCurrency(row.received_amount || 0, ccy);
+        if (col.id === "total") return formatShopMoney(row.total_amount || 0);
+        if (col.id === "received") return formatShopMoney(row.received_amount || 0);
         if (col.id === "remaining") {
-          return formatCurrency(calculateRemainingAmount(row), ccy);
+          return formatShopMoney(calculateRemainingAmount(row));
         }
-        if (col.id === "currency") return ccy;
         return "—";
       },
     });
@@ -272,7 +267,6 @@ const SalesIndex = () => {
   };
 
   const handleResetFilters = () => {
-    setCurrencyFilter("all");
     setCustomerFilter(null);
     setSearchInput("");
     setDebouncedSearch("");
@@ -284,7 +278,6 @@ const SalesIndex = () => {
   const hasActiveFilters =
     !!debouncedSearch ||
     !!customerFilter ||
-    (currencyFilter && currencyFilter !== "all") ||
     !!dateFrom ||
     !!dateTo ||
     (paymentStatus && paymentStatus !== "all");
@@ -385,14 +378,6 @@ const SalesIndex = () => {
                   </button>
                 </Badge>
               ) : null}
-              {currencyFilter !== "all" ? (
-                <Badge variant="secondary" className="gap-1 pe-1">
-                  {currencyFilter}
-                  <button type="button" className="rounded-sm p-0.5 hover:bg-muted" onClick={() => setCurrencyFilter("all")}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ) : null}
             </div>
           )}
 
@@ -415,18 +400,6 @@ const SalesIndex = () => {
                     placeholder={t("sales.filterCustomer", "Filter by customer")}
                     className="[&_button]:h-9"
                   />
-                </FilterField>
-                <FilterField label={t("sales.currency", "Currency")}>
-                  <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-                    <SelectTrigger className="h-9 w-full min-w-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("common.all", "All")}</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="AFN">AFN</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </FilterField>
                 <FilterField label={t("finance.dateFrom", "Date from")}>
                   <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-full min-w-0" />
@@ -487,7 +460,6 @@ const SalesIndex = () => {
                 ) : (
                   salesData.map((sale) => {
                     const remaining = calculateRemainingAmount(sale);
-                    const currency = sale.currency || "USD";
                     return (
                       <TableRow key={sale.id}>
                         <TableCell className="font-medium tabular-nums">#{sale.id}</TableCell>
@@ -500,10 +472,10 @@ const SalesIndex = () => {
                             : "—"}
                         </TableCell>
                         <TableCell className="text-end tabular-nums font-medium">
-                          {formatCurrency(sale.total_amount || 0, currency)}
+                          {formatShopMoney(sale.total_amount || 0)}
                         </TableCell>
                         <TableCell className="text-end tabular-nums">
-                          {formatCurrency(sale.received_amount || 0, currency)}
+                          {formatShopMoney(sale.received_amount || 0)}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -511,7 +483,7 @@ const SalesIndex = () => {
                             remaining > 0 && "font-medium text-destructive"
                           )}
                         >
-                          {formatCurrency(remaining, currency)}
+                          {formatShopMoney(remaining)}
                         </TableCell>
                         <TableCell>{statusBadge(sale)}</TableCell>
                         <TableCell>

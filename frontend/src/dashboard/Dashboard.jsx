@@ -27,7 +27,7 @@ import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import PageHeader from "../components/PageHeader";
 import { InlineAlert } from "../components/AlertMessage";
-import { formatCurrency } from "../utils/formatters";
+import { formatShopMoney } from "../config/shopConfig";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,11 +39,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-function money(value, currency) {
+function money(value) {
   if (value == null || value === "") return "—";
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
-  return formatCurrency(n, currency);
+  return formatShopMoney(n);
 }
 
 function KpiTile({ label, value, hint, icon: Icon }) {
@@ -151,16 +151,15 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const auth = useAuth();
   const token = auth?.user?.token;
-  const [currency, setCurrency] = useState("AFN");
   const [days, setDays] = useState(14);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
-    queryKey: ["dashboard-daily", currency, days],
+    queryKey: ["dashboard-daily", days],
     queryFn: async () => {
       const headers = token ? { Authorization: `Token ${token}` } : {};
       const res = await axios.get(`${API_BASE_URL}/dashboard/daily/`, {
         headers,
-        params: { currency, days },
+        params: { days },
       });
       return res.data;
     },
@@ -186,7 +185,6 @@ const Dashboard = () => {
     }));
   }, [data]);
 
-  const ccy = data?.currency || currency;
   const today = data?.today;
 
   const tooltipStyle = {
@@ -223,15 +221,6 @@ const Dashboard = () => {
               <SelectItem value="30">{t("dashboard.last30Days", "Last 30 days")}</SelectItem>
             </SelectContent>
           </Select>,
-          <Select key="ccy" value={currency} onValueChange={setCurrency}>
-            <SelectTrigger className="min-w-[100px]">
-              <SelectValue placeholder={t("common.currency")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="AFN">AFN</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
-            </SelectContent>
-          </Select>,
           <Button key="reports" asChild variant="outline" size="sm">
             <RouterLink to="/app/accounting/reports">
               <BarChart3 className="h-4 w-4" />
@@ -258,14 +247,14 @@ const Dashboard = () => {
       {data ? (
         <>
           <p className="mb-3 block text-xs font-semibold text-muted-foreground">
-            {t("dashboard.asOfToday", "Today")}: {data.as_of} · {ccy}
+            {t("dashboard.asOfToday", "Today")}: {data.as_of}
           </p>
 
           <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <KpiTile
               icon={ShoppingCart}
               label={t("dashboard.todaySales", "Today’s sales")}
-              value={money(today.sales_total, ccy)}
+              value={money(today.sales_total)}
               hint={t("dashboard.invoiceCount", "{{count}} invoices", {
                 count: today.sales_count,
               })}
@@ -273,7 +262,7 @@ const Dashboard = () => {
             <KpiTile
               icon={Wallet}
               label={t("dashboard.todayCollections", "Today’s collections")}
-              value={money(today.collections, ccy)}
+              value={money(today.collections)}
               hint={t("dashboard.unpaidToday", "{{count}} unpaid", {
                 count: today.unpaid_invoices,
               })}
@@ -281,7 +270,7 @@ const Dashboard = () => {
             <KpiTile
               icon={ShoppingBag}
               label={t("dashboard.todayPurchases", "Today’s purchases")}
-              value={money(today.purchases_total, ccy)}
+              value={money(today.purchases_total)}
               hint={t("dashboard.billCount", "{{count}} bills", {
                 count: today.purchase_count,
               })}
@@ -289,9 +278,9 @@ const Dashboard = () => {
             <KpiTile
               icon={Receipt}
               label={t("dashboard.periodSales", "Period sales")}
-              value={money(data.period.sales_total, ccy)}
+              value={money(data.period.sales_total)}
               hint={t("dashboard.periodPurchasesHint", "Purchases {{amount}}", {
-                amount: money(data.period.purchases_total, ccy),
+                amount: money(data.period.purchases_total),
               })}
             />
           </div>
@@ -311,7 +300,7 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} width={56} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(value) => money(value, ccy)} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(value) => money(value)} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Bar
                       dataKey="sales"
@@ -363,7 +352,7 @@ const Dashboard = () => {
                       <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} />
                       <Tooltip
                         contentStyle={tooltipStyle}
-                        formatter={(value) => money(value, ccy)}
+                        formatter={(value) => money(value)}
                         labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ""}
                       />
                       <Bar
@@ -394,14 +383,14 @@ const Dashboard = () => {
                   label: t("common.total"),
                   align: "right",
                   money: true,
-                  render: (row) => money(row.total, ccy),
+                  render: (row) => money(row.total),
                 },
                 {
                   id: "received",
                   label: t("dashboard.collected", "Collected"),
                   align: "right",
                   money: true,
-                  render: (row) => money(row.received, ccy),
+                  render: (row) => money(row.received),
                 },
               ]}
               rows={data.recent_sales || []}
@@ -419,14 +408,14 @@ const Dashboard = () => {
                   label: t("common.total"),
                   align: "right",
                   money: true,
-                  render: (row) => money(row.total, ccy),
+                  render: (row) => money(row.total),
                 },
                 {
                   id: "paid",
                   label: t("dashboard.paid", "Paid"),
                   align: "right",
                   money: true,
-                  render: (row) => money(row.paid, ccy),
+                  render: (row) => money(row.paid),
                 },
               ]}
               rows={data.recent_purchases || []}

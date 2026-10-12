@@ -11,7 +11,6 @@ from api.views.data.sale_return import SaleReturnViewSet
 from api.views.data.supplier import SupplierViewSet
 from api.views.data.customer import CustomerViewSet
 from api.views.data.employee import EmployeeViewSet
-from api.views.accounting.currency_conversion import CurrencyConversionAPIView
 from api.views.accounting.account import AccountingAccountViewSet
 from api.views.accounting.journal import JournalEntryViewSet
 from api.views.accounting.customer_ledger import (
@@ -129,11 +128,6 @@ urlpatterns = [
         "accounting/trial-balance/",
         AccountingTrialBalanceAPIView.as_view(),
         name="accounting-trial-balance",
-    ),
-    path(
-        "accounting/currency-conversions/",
-        CurrencyConversionAPIView.as_view(),
-        name="accounting-currency-conversion",
     ),
     path(
         "accounting/trial-balance/export/excel/",

@@ -10,15 +10,10 @@ import useAdd from "../../../api/useAdd";
 import useFetchObjects from "../../../api/useFetchObjects";
 import { useAuth } from "../../../context/AuthContext";
 import PageHeader from "../../../components/PageHeader";
-import { FormTextField, FormSelectField, FormCurrencyField } from "../../../components/FormFields";
+import { FormTextField } from "../../../components/FormFields";
 import { InlineAlert } from "../../../components/AlertMessage";
 import SearchableSelect from "../../../components/SearchableSelect";
 import { FormShell, FormBody, FormGrid, FormSection } from "../../../components/FormShell";
-
-const CURRENCY_OPTIONS = [
-  { value: "AFN", label: "AFN" },
-  { value: "USD", label: "USD" },
-];
 
 const amountField = () =>
   Yup.number()
@@ -26,20 +21,12 @@ const amountField = () =>
     .nullable()
     .transform((v, orig) => (orig === "" || orig == null ? null : v));
 
-const buildPayload = (values) => {
-  const payload = {
-    product: values.product,
-    currency: values.currency,
-    buy_price: parseFloat(values.buy_price || 0),
-  };
-  if (values.thickness?.trim()) payload.thickness = values.thickness.trim();
-  const amounts = ["weight_amount", "meter_amount", "khada_amount", "grain_amount"];
-  amounts.forEach((field) => {
-    const raw = values[field];
-    if (raw !== "" && raw != null) payload[field] = parseFloat(raw);
-  });
-  return payload;
-};
+const buildPayload = (values) => ({
+  product: values.product,
+  quantity: values.quantity !== "" ? parseFloat(values.quantity || 0) : 0,
+  buy_price: parseFloat(values.buy_price || 0),
+  min_quantity: parseFloat(values.min_quantity || 0),
+});
 
 const AddInventory = () => {
   const { t } = useTranslation();
@@ -61,13 +48,9 @@ const AddInventory = () => {
 
   const validationSchema = Yup.object({
     product: Yup.mixed().required(t("validation.required")),
-    currency: Yup.string().oneOf(["AFN", "USD"]).required(t("validation.required")),
-    thickness: Yup.string().nullable(),
     buy_price: Yup.number().min(0).required(t("validation.required")),
-    weight_amount: amountField(),
-    meter_amount: amountField(),
-    khada_amount: amountField(),
-    grain_amount: amountField(),
+    quantity: amountField(),
+    min_quantity: amountField(),
   });
 
   const { handleAdd, loading, error } = useAdd(
@@ -81,13 +64,9 @@ const AddInventory = () => {
   const formik = useFormik({
     initialValues: {
       product: "",
-      currency: "AFN",
-      thickness: "",
-      weight_amount: "",
-      meter_amount: "",
-      khada_amount: "",
-      grain_amount: "",
+      quantity: "",
       buy_price: 0,
+      min_quantity: 0,
     },
     validationSchema,
     onSubmit: (values) => {
@@ -99,12 +78,6 @@ const AddInventory = () => {
     setSelectedProduct(value);
     formik.setFieldValue("product", value?.id || "");
   };
-
-  const showWeight = selectedProduct?.is_weight;
-  const showMeter = selectedProduct?.is_meter;
-  const showKhada = selectedProduct?.is_khada;
-  const showGrain = selectedProduct?.is_grain;
-  const hasAmountFields = showWeight || showMeter || showKhada || showGrain;
 
   return (
     <FormShell>
@@ -156,88 +129,34 @@ const AddInventory = () => {
                   error={formik.touched.product && Boolean(formik.errors.product)}
                   helperText={formik.touched.product && formik.errors.product}
                 />
-                <FormSelectField
-                  name="currency"
-                  label={t("inventory.currency")}
-                  value={formik.values.currency}
+                <FormTextField
+                  name="quantity"
+                  label={t("common.quantity", "Quantity")}
+                  type="number"
+                  value={formik.values.quantity}
                   onChange={formik.handleChange}
-                  options={CURRENCY_OPTIONS}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  fullWidth
+                />
+                <FormTextField
+                  name="buy_price"
+                  label={t("inventory.buyPrice", "Buy price")}
+                  type="number"
+                  value={formik.values.buy_price}
+                  onChange={formik.handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
                   required
                   fullWidth
                 />
                 <FormTextField
-                  name="thickness"
-                  label={t("inventory.thickness")}
-                  value={formik.values.thickness}
+                  name="min_quantity"
+                  label={t("inventory.minQuantity", "Min quantity")}
+                  type="number"
+                  value={formik.values.min_quantity}
                   onChange={formik.handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
                   fullWidth
                 />
-                <FormCurrencyField
-                  name="buy_price"
-                  label={t("inventory.buyPrice", "Buy price")}
-                  value={formik.values.buy_price}
-                  onChange={formik.handleChange}
-                  currencySymbol={formik.values.currency === "USD" ? "$" : "؋"}
-                  required
-                  fullWidth
-                />
-                {hasAmountFields ? (
-                  <>
-                    {showWeight && (
-                      <FormTextField
-                        name="weight_amount"
-                        label={t("inventory.weightAmount")}
-                        type="number"
-                        value={formik.values.weight_amount}
-                        onChange={formik.handleChange}
-                        inputProps={{ min: 0, step: "0.01" }}
-                        fullWidth
-                      />
-                    )}
-                    {showMeter && (
-                      <FormTextField
-                        name="meter_amount"
-                        label={t("inventory.meterAmount")}
-                        type="number"
-                        value={formik.values.meter_amount}
-                        onChange={formik.handleChange}
-                        inputProps={{ min: 0, step: "0.01" }}
-                        fullWidth
-                      />
-                    )}
-                    {showKhada && (
-                      <FormTextField
-                        name="khada_amount"
-                        label={t("inventory.khadaAmount")}
-                        type="number"
-                        value={formik.values.khada_amount}
-                        onChange={formik.handleChange}
-                        inputProps={{ min: 0, step: "0.01" }}
-                        fullWidth
-                      />
-                    )}
-                    {showGrain && (
-                      <FormTextField
-                        name="grain_amount"
-                        label={t("inventory.grainAmount")}
-                        type="number"
-                        value={formik.values.grain_amount}
-                        onChange={formik.handleChange}
-                        inputProps={{ min: 0, step: "0.01" }}
-                        fullWidth
-                      />
-                    )}
-                  </>
-                ) : selectedProduct ? (
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-muted-foreground">
-                      {t(
-                        "inventory.noAmountFields",
-                        "This product has no quantity dimensions configured. Set buy price and save, or use Stock Openings to receive stock."
-                      )}
-                    </p>
-                  </div>
-                ) : null}
               </div>
             </form>
           </FormSection>

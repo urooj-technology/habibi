@@ -1,6 +1,4 @@
-"""
-Excel / PDF builders for stock inventory exports.
-"""
+"""Excel / PDF builders for stock inventory exports."""
 
 import io
 from datetime import datetime
@@ -17,20 +15,15 @@ def _dec(value, places="0.01"):
 
 
 def build_stock_export_rows(queryset):
-    """Serialize inventory queryset into plain row dicts for export builders."""
     rows = []
     for inv in queryset:
         rows.append(
             {
                 "id": inv.id,
                 "product": inv.product.name if inv.product_id else "",
-                "weight_amount": _dec(inv.weight_amount),
-                "khada_amount": _dec(inv.khada_amount),
-                "meter_amount": _dec(inv.meter_amount),
-                "grain_amount": _dec(inv.grain_amount),
-                "thickness": inv.thickness or "",
+                "quantity": _dec(inv.quantity),
                 "buy_price": _dec(inv.buy_price),
-                "currency": inv.currency or "AFN",
+                "min_quantity": _dec(inv.min_quantity),
             }
         )
     return rows
@@ -63,103 +56,57 @@ def excel_stock_inventory_response(rows) -> HttpResponse:
     align_center = Alignment(horizontal="center", vertical="center")
     align_right = Alignment(horizontal="right", vertical="center")
 
-    headers = [
-        "ID",
-        "Product",
-        "Weight",
-        "Khada",
-        "Meter",
-        "Grain",
-        "Thickness",
-        "Buy Price",
-        "Currency",
-    ]
+    headers = ["ID", "Product", "Quantity", "Buy Price", "Min Quantity"]
 
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
     ws["A1"] = "Stock Inventory"
     ws["A1"].font = title_font
-    ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+    ws["A1"].alignment = align_left
 
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    ws["A2"] = f"Generated at: {generated_at}  |  Rows: {len(rows)}"
+    ws["A2"] = f"Generated: {generated_at}"
     ws["A2"].font = subtitle_font
 
-    ws.append([])
-    ws.append(headers)
-
-    header_row = ws.max_row
-    for col_idx in range(1, len(headers) + 1):
-        cell = ws.cell(row=header_row, column=col_idx)
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=4, column=col, value=header)
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = align_center
         cell.border = border
 
-    data_start = ws.max_row + 1
-    for r in rows:
-        ws.append(
-            [
-                r["id"],
-                r["product"],
-                r["weight_amount"],
-                r["khada_amount"],
-                r["meter_amount"],
-                r["grain_amount"],
-                r["thickness"],
-                r["buy_price"],
-                r["currency"],
-            ]
-        )
-    data_end = ws.max_row
+    for r_idx, row in enumerate(rows, start=5):
+        values = [
+            row["id"],
+            row["product"],
+            row["quantity"],
+            row["buy_price"],
+            row["min_quantity"],
+        ]
+        for c_idx, value in enumerate(values, start=1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=value)
+            cell.border = border
+            cell.alignment = align_right if c_idx > 2 else align_left
 
-    money_cols = {3, 4, 5, 6, 8}
-    for row in range(data_start, data_end + 1):
-        for col in range(1, len(headers) + 1):
-            c = ws.cell(row=row, column=col)
-            c.border = border
-            if col in (1, 9):
-                c.alignment = align_center
-            elif col in money_cols:
-                c.alignment = align_right
-                c.number_format = "#,##0.00"
-            else:
-                c.alignment = align_left
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 18
 
-    ws.freeze_panes = f"A{data_start}"
-    if data_end >= header_row:
-        ws.auto_filter.ref = (
-            f"A{header_row}:{get_column_letter(len(headers))}{data_end}"
-        )
-
-    widths = {1: 8, 2: 32, 3: 12, 4: 12, 5: 12, 6: 12, 7: 12, 8: 12, 9: 10}
-    for col_idx, w in widths.items():
-        ws.column_dimensions[get_column_letter(col_idx)].width = w
-
-    out = io.BytesIO()
-    wb.save(out)
-    out.seek(0)
-
-    fname = f"stock-inventory_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    resp = HttpResponse(
-        out.getvalue(),
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(
+        buf.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    resp["Content-Disposition"] = f'attachment; filename="{fname}"'
-    return resp
+    response["Content-Disposition"] = 'attachment; filename="stock_inventory.xlsx"'
+    return response
 
 
 def pdf_stock_inventory_response(rows) -> HttpResponse:
     try:
-        from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import (
-            SimpleDocTemplate,
-            Table,
-            TableStyle,
-            Paragraph,
-            Spacer,
-        )
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     except Exception as e:
         return HttpResponse(
             f"PDF export dependency missing: {e}",
@@ -168,100 +115,41 @@ def pdf_stock_inventory_response(rows) -> HttpResponse:
         )
 
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=landscape(A4),
-        leftMargin=20,
-        rightMargin=20,
-        topMargin=20,
-        bottomMargin=20,
-        title="Stock Inventory",
-    )
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4))
     styles = getSampleStyleSheet()
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    title = Paragraph("Stock Inventory", styles["Title"])
-    subtitle = Paragraph(
-        f"Generated at: {generated_at}  |  Rows: {len(rows)}",
-        styles["Normal"],
-    )
-
-    data = [
-        [
-            "ID",
-            "Product",
-            "Weight",
-            "Khada",
-            "Meter",
-            "Grain",
-            "Thickness",
-            "Buy Price",
-            "Cur",
-        ]
+    story = [
+        Paragraph("Stock Inventory", styles["Title"]),
+        Spacer(1, 12),
     ]
-    for r in rows:
+
+    data = [["ID", "Product", "Quantity", "Buy Price", "Min Qty"]]
+    for row in rows:
         data.append(
             [
-                str(r["id"]),
-                r["product"] or "—",
-                f"{r['weight_amount']:.2f}",
-                f"{r['khada_amount']:.2f}",
-                f"{r['meter_amount']:.2f}",
-                f"{r['grain_amount']:.2f}",
-                str(r["thickness"] or "—"),
-                f"{r['buy_price']:.2f}",
-                r["currency"],
+                str(row["id"]),
+                row["product"],
+                str(row["quantity"]),
+                str(row["buy_price"]),
+                str(row["min_quantity"]),
             ]
         )
 
-    page_w, _page_h = landscape(A4)
-    usable_w = page_w - doc.leftMargin - doc.rightMargin
-    col_widths = [
-        usable_w * 0.06,
-        usable_w * 0.26,
-        usable_w * 0.10,
-        usable_w * 0.10,
-        usable_w * 0.10,
-        usable_w * 0.10,
-        usable_w * 0.10,
-        usable_w * 0.10,
-        usable_w * 0.08,
-    ]
-
-    table = Table(data, repeatRows=1, colWidths=col_widths)
+    table = Table(data, repeatRows=1)
     table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                (
-                    "ROWBACKGROUNDS",
-                    (0, 1),
-                    (-1, -1),
-                    [colors.white, colors.HexColor("#F9FAFB")],
-                ),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                ("ALIGN", (2, 0), (5, -1), "RIGHT"),
-                ("ALIGN", (7, 0), (7, -1), "RIGHT"),
-                ("ALIGN", (8, 0), (8, -1), "CENTER"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F3F4F6")]),
             ]
         )
     )
-
-    doc.build([title, subtitle, Spacer(1, 10), table])
-    pdf = buf.getvalue()
-    buf.close()
-
-    fname = f"stock-inventory_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
-    resp = HttpResponse(pdf, content_type="application/pdf")
-    resp["Content-Disposition"] = f'attachment; filename="{fname}"'
-    return resp
+    story.append(table)
+    doc.build(story)
+    buf.seek(0)
+    response = HttpResponse(buf.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="stock_inventory.pdf"'
+    return response

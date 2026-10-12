@@ -16,14 +16,8 @@ class ProductViewSet(DataRootViewSet):
     serializer_class = ProductSerializer
     permission_classes = [ModuleCRUDPermission("inventory")]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = [
-        "name",
-        "category",
-        "is_weight",
-        "is_meter",
-        "is_khada",
-    ]  # Filter by name and code
-    search_fields = ["name"]  # Search by name and code
+    filterset_fields = ["name", "category"]
+    search_fields = ["name"]
     pagination_class = CustomPagination
 
     def create(self, request, *args, **kwargs):

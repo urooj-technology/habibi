@@ -196,16 +196,6 @@ const AddAccountingAccount = () => {
             </FormRow>
             <FormRow cols={2}>
               <FormSelectField
-                name="currency"
-                label="accounting.filterByCurrency"
-                value={formData.currency}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, currency: e.target.value }))
-                }
-                options={CURRENCY_OPTIONS}
-                required
-              />
-              <FormSelectField
                 name="account_type"
                 label="accounting.accountType"
                 value={formData.account_type}
@@ -213,8 +203,6 @@ const AddAccountingAccount = () => {
                 options={ACCOUNT_TYPES}
                 required
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="category"
                 label="accounting.category"
@@ -224,6 +212,8 @@ const AddAccountingAccount = () => {
                 }
                 options={categorySelectOptions}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="role"
                 label="accounting.role"
@@ -231,8 +221,6 @@ const AddAccountingAccount = () => {
                 onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
                 options={ROLE_OPTIONS}
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="parent"
                 label="accounting.parent"
@@ -243,6 +231,8 @@ const AddAccountingAccount = () => {
                 }}
                 options={parentSelectOptions}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="is_active"
                 label="common.status"

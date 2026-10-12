@@ -24,13 +24,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,7 +51,7 @@ import {
   FilterSearch,
   FilterClearButton,
 } from "../../../components/ListPage";
-import { formatCurrency } from "../../../utils/formatters";
+import { formatShopMoney } from "@/config/shopConfig";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "../../../config/env";
 import PurchasePrint from "./PurchasePrint";
@@ -97,7 +90,6 @@ const PurchaseIndex = () => {
   const tableContainerRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [currencyFilter, setCurrencyFilter] = useState("all");
   const [supplierFilter, setSupplierFilter] = useState(null);
 
   const [purchasesData, setPurchasesData] = useState([]);
@@ -182,7 +174,6 @@ const PurchaseIndex = () => {
   const { handleDelete, ConfirmDialog } = useDelete("purchases", token, refetch);
 
   const handleResetFilters = () => {
-    setCurrencyFilter("all");
     setSupplierFilter(null);
     setSearchQuery("");
     setPage(0);
@@ -195,7 +186,6 @@ const PurchaseIndex = () => {
   };
 
   const filteredRows = purchasesData.filter((purchase) => {
-    if (currencyFilter !== "all" && purchase.currency !== currencyFilter) return false;
     if (supplierFilter?.id && purchase.supplier !== supplierFilter.id && purchase.supplier_details?.id !== supplierFilter.id) {
       return false;
     }
@@ -203,7 +193,7 @@ const PurchaseIndex = () => {
   });
 
   const hasActiveFilters =
-    Boolean(searchQuery) || currencyFilter !== "all" || Boolean(supplierFilter);
+    Boolean(searchQuery) || Boolean(supplierFilter);
 
   const handlePrintBill = async (purchase) => {
     try {
@@ -237,10 +227,6 @@ const PurchaseIndex = () => {
       title: t("purchase.title", "Purchases"),
       meta: [
         { label: t("common.rows", "Rows"), value: String(filteredRows.length) },
-        {
-          label: t("common.currency"),
-          value: currencyFilter === "all" ? t("common.all", "All") : currencyFilter,
-        },
       ],
       columns: [
         { id: "id", label: t("common.id", "ID"), align: "center" },
@@ -249,11 +235,9 @@ const PurchaseIndex = () => {
         { id: "total", label: t("purchase.totalAmount", "Total"), align: "right" },
         { id: "received", label: t("purchase.receivedAmount", "Received"), align: "right" },
         { id: "remaining", label: t("purchase.remainingAmount", "Remaining"), align: "right" },
-        { id: "currency", label: t("purchase.currency", "Currency"), align: "center" },
       ],
       rows: filteredRows,
       getCell: (row, col) => {
-        const ccy = row.currency || "AFN";
         if (col.id === "id") return `#${row.id}`;
         if (col.id === "supplier") return row.supplier_details?.name || "—";
         if (col.id === "date") {
@@ -261,12 +245,11 @@ const PurchaseIndex = () => {
             ? new Date(row.purchase_date).toLocaleDateString()
             : "—";
         }
-        if (col.id === "total") return formatCurrency(row.total_amount || 0, ccy);
-        if (col.id === "received") return formatCurrency(row.received_amount || 0, ccy);
+        if (col.id === "total") return formatShopMoney(row.total_amount || 0);
+        if (col.id === "received") return formatShopMoney(row.received_amount || 0);
         if (col.id === "remaining") {
-          return formatCurrency(calculateRemainingAmount(row), ccy);
+          return formatShopMoney(calculateRemainingAmount(row));
         }
-        if (col.id === "currency") return ccy;
         return "—";
       },
     });
@@ -372,18 +355,6 @@ const PurchaseIndex = () => {
             />
           </FilterField>
 
-          <FilterField label={t("purchase.currency", "Currency")}>
-            <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder={t("common.all", "All")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("common.all", "All")}</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="AFN">AFN</SelectItem>
-              </SelectContent>
-            </Select>
-          </FilterField>
         </ListToolbar>
 
         <div
@@ -401,7 +372,6 @@ const PurchaseIndex = () => {
                   <TableHead className="text-end">{t("purchase.totalAmount", "Total")}</TableHead>
                   <TableHead className="text-end">{t("purchase.receivedAmount", "Received")}</TableHead>
                   <TableHead className="text-end">{t("purchase.remainingAmount", "Remaining")}</TableHead>
-                  <TableHead>{t("purchase.currency", "Currency")}</TableHead>
                   <TableHead>{t("common.status", "Status")}</TableHead>
                   <TableHead className="text-center">{t("common.actions", "Actions")}</TableHead>
                 </TableRow>
@@ -409,20 +379,19 @@ const PurchaseIndex = () => {
               <TableBody>
                 {isLoading && page === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center">
+                    <TableCell colSpan={8} className="py-12 text-center">
                       <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
                       {t("purchase.noPurchasesFound", "No purchases found")}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredRows.map((purchase) => {
                     const remaining = calculateRemainingAmount(purchase);
-                    const currency = purchase.currency || "USD";
                     return (
                       <TableRow key={purchase.id}>
                         <TableCell className="font-medium tabular-nums">#{purchase.id}</TableCell>
@@ -435,10 +404,10 @@ const PurchaseIndex = () => {
                             : "—"}
                         </TableCell>
                         <TableCell className="text-end tabular-nums font-medium">
-                          {formatCurrency(purchase.total_amount || 0, currency)}
+                          {formatShopMoney(purchase.total_amount || 0)}
                         </TableCell>
                         <TableCell className="text-end tabular-nums">
-                          {formatCurrency(purchase.received_amount || 0, currency)}
+                          {formatShopMoney(purchase.received_amount || 0)}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -446,9 +415,8 @@ const PurchaseIndex = () => {
                             remaining > 0 && "font-medium text-destructive"
                           )}
                         >
-                          {formatCurrency(remaining, currency)}
+                          {formatShopMoney(remaining)}
                         </TableCell>
-                        <TableCell>{currency}</TableCell>
                         <TableCell>{statusBadge(purchase)}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-0.5">

@@ -17,11 +17,10 @@ import useFetchObject from "../../../api/useFetchObject";
 import { useAuth } from "../../../context/AuthContext";
 import {
   calculatePricedLineTotal,
-  defaultPricingBase,
-  getLineMeasurementEntries,
+  getLineQuantity,
   resolveLineProduct,
-  UNIT_LABEL_KEYS,
 } from "../../../utils/measurementConversion";
+import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
   PosHeader,
@@ -39,23 +38,14 @@ import { FullPageLoader } from "../../../components/LoadingScreen";
 import { InlineAlert } from "../../../components/AlertMessage";
 import PurchasePrint from "./PurchasePrint";
 
-const money = (amount) =>
-  Number(amount || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
 const formatQty = (amount) => {
   const n = Number(amount);
   if (!Number.isFinite(n)) return "—";
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 };
 
-const calculatePurchaseLineTotal = (item) => {
-  const product = resolveLineProduct(item);
-  const base = defaultPricingBase(product, item.pricing_base);
-  return calculatePricedLineTotal(item, item.buy_price, base);
-};
+const calculatePurchaseLineTotal = (item) =>
+  calculatePricedLineTotal(item, item.buy_price);
 
 const PurchaseView = () => {
   const { t } = useTranslation();
@@ -71,26 +61,17 @@ const PurchaseView = () => {
     error,
   } = useFetchObject(["purchase", id], "purchases", id, token);
 
-  const currencyLabel =
-    purchase?.currency === "USD" ? t("sales.usd") : t("sales.afn");
-
   const lines = useMemo(() => {
     const items = Array.isArray(purchase?.purchase_items)
       ? purchase.purchase_items
       : [];
     return items.map((item) => {
       const product = resolveLineProduct(item);
-      const pricingBase = defaultPricingBase(product, item.pricing_base);
-      const entries = getLineMeasurementEntries(item, product);
-      const priced =
-        entries.find((m) => m.unit === pricingBase) || entries[0] || null;
       return {
         id: item.id,
         name: product.name || item.product_details?.name || "—",
         note: item.note || item.line_memo || "",
-        thickness: item.thickness || product.thickness || "",
-        qty: priced?.amount ?? 0,
-        qtyUnit: priced?.unit || pricingBase || "",
+        qty: getLineQuantity(item),
         unitPrice: Number.parseFloat(item.buy_price) || 0,
         lineTotal: calculatePurchaseLineTotal(item),
       };
@@ -228,18 +209,6 @@ const PurchaseView = () => {
               </div>
             </PosField>
 
-            <PosField label={t("purchase.currency", "Currency")}>
-              <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium">
-                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{currencyLabel}</span>
-                {purchase.exchange_rate ? (
-                  <span className="text-muted-foreground">
-                    · {t("purchase.exchangeRate")}: {purchase.exchange_rate}
-                  </span>
-                ) : null}
-              </div>
-            </PosField>
-
             <PosField label={t("common.status")}>
               <div
                 className={cn(
@@ -289,11 +258,6 @@ const PurchaseView = () => {
                         <p className="truncate text-sm font-semibold text-foreground">
                           {row.name}
                         </p>
-                        {row.thickness ? (
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {t("product.thickness", "Thickness")}: {row.thickness}
-                          </p>
-                        ) : null}
                         {row.note ? (
                           <p className="truncate text-[11px] text-muted-foreground">
                             {t("common.notes")}: {row.note}
@@ -302,22 +266,17 @@ const PurchaseView = () => {
                       </PosItemCell>
                       <PosItemCell>
                         <p className="text-sm font-semibold tabular-nums">
-                          {row.qtyUnit
-                            ? `${formatQty(row.qty)} ${t(
-                                UNIT_LABEL_KEYS[row.qtyUnit] || row.qtyUnit,
-                                row.qtyUnit
-                              )}`
-                            : "—"}
+                          {row.qty > 0 ? formatQty(row.qty) : "—"}
                         </p>
                       </PosItemCell>
                       <PosItemCell className="text-end">
                         <p className="text-sm tabular-nums">
-                          {money(row.unitPrice)}
+                          {formatShopMoney(row.unitPrice)}
                         </p>
                       </PosItemCell>
                       <PosItemCell className="text-end">
                         <p className="text-sm font-bold tabular-nums text-foreground">
-                          {money(row.lineTotal)}
+                          {formatShopMoney(row.lineTotal)}
                         </p>
                       </PosItemCell>
                     </div>
@@ -342,12 +301,12 @@ const PurchaseView = () => {
         <PosSummary title={t("payment.summary", "Payment summary")}>
           <PosTotalRow
             label={t("purchase.totalAmount", "Total amount")}
-            value={`${money(totalAmount)} ${currencyLabel}`}
+            value={formatShopMoney(totalAmount)}
             emphasize
           />
           <PosTotalRow
             label={t("purchase.receivedAmount", "Paid")}
-            value={`${money(receivedAmount)} ${currencyLabel}`}
+            value={formatShopMoney(receivedAmount)}
           />
           <div
             className={cn(
@@ -359,7 +318,7 @@ const PurchaseView = () => {
           >
             <PosTotalRow
               label={t("purchase.remainingAmount", "Remaining")}
-              value={`${money(remainingAmount)} ${currencyLabel}`}
+              value={formatShopMoney(remainingAmount)}
               emphasize
             />
           </div>

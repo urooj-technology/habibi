@@ -24,8 +24,8 @@ import AddCustomerDialog from "./AddCustomerDialog";
 import { useEnterNavigatesItemFields } from "../../../hooks/useEnterNavigatesItemFields";
 import useFormDraft from "../../../hooks/useFormDraft";
 import FormDraftBanner from "../../../components/FormDraftBanner";
-import { calculatePricedLineTotal, defaultPricingBase, getSelectedUnits, applyDualMeasurementSync } from "../../../utils/measurementConversion";
-import PricingBaseSelect from "@/components/pos/PricingBaseSelect";
+import { calculatePricedLineTotal, quantityPayload } from "../../../utils/measurementConversion";
+import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
   PosHeader,
@@ -46,13 +46,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const InlineMessage = ({ message, severity, onClose }) => {
@@ -92,14 +85,10 @@ const InlineMessage = ({ message, severity, onClose }) => {
 const initialItemState = {
   id: Date.now(),
   inventory: null,
-  weight_amount: "",
-  meter_amount: "",
-  khada_amount: "",
-  grain_amount: "",
+  quantity: "",
   note: "",
   sale_price: "",
   item_notes: "",
-  pricing_base: "",
 };
 
 const EditSales = () => {
@@ -115,8 +104,6 @@ const EditSales = () => {
   // Form state
   const [formValues, setFormValues] = useState({
     customer: "",
-    currency: "USD",
-    exchange_rate: "",
     sale_date: new Date().toISOString().split("T")[0],
     freight_amount: "",
     received_amount: "",
@@ -150,12 +137,10 @@ const EditSales = () => {
     const arr = Array.isArray(accountsData)
       ? accountsData
       : accountsData?.results || [];
-    return arr.filter(
-      (a) =>
-        (a?.role === "CASH" || a?.role === "BANK") &&
-        (!formValues.currency || a?.currency === formValues.currency)
-    );
-  }, [accountsData, formValues.currency]);
+    const cashBank = arr.filter((a) => a?.role === "CASH" || a?.role === "BANK");
+    const afn = cashBank.filter((a) => !a?.currency || a.currency === "AFN");
+    return afn.length > 0 ? afn : cashBank;
+  }, [accountsData]);
 
   const {
     data: saleData,
@@ -196,21 +181,23 @@ const EditSales = () => {
     setMessages((prev) => prev.filter((msg) => msg.id !== id));
   };
 
-  const getStockAvailable = useCallback((item, fieldName) => {
+  const getStockAvailable = useCallback((item) => {
     const inv = item.inventory;
     if (!inv) return 0;
-    const current = Number.parseFloat(inv[fieldName] || 0) || 0;
+    const current = Number.parseFloat(inv.quantity || 0) || 0;
     const orig = item.original_item;
     const origInvId = orig?.inventory?.id ?? orig?.inventory;
     const same =
       orig &&
       inv?.id != null &&
       Number(origInvId) === Number(inv.id);
-    const restored = same ? Number.parseFloat(orig[fieldName] || 0) || 0 : 0;
+    const restored = same
+      ? Number.parseFloat(orig.quantity ?? 0) || 0
+      : 0;
     return current + restored;
   }, []);
 
-    const getAvailableProducts = useCallback(
+  const getAvailableProducts = useCallback(
     (currentItemId) => {
       return inventory.filter(
         (inv) =>
@@ -222,51 +209,9 @@ const EditSales = () => {
     [inventory, saleItems]
   );
 
-  const getActiveMeasurementFields = useCallback(
-    (inventoryItem) => {
-      if (!inventoryItem?.product_details) return [];
-      const product = inventoryItem.product_details;
-      const fields = [];
-
-      if (product.is_weight)
-        fields.push({
-          name: "weight_amount",
-          label: t("sales.measurementLabels.weight"),
-          available: inventoryItem.weight_amount || 0,
-          unit: "kg",
-        });
-      if (product.is_meter)
-        fields.push({
-          name: "meter_amount",
-          label: t("sales.measurementLabels.meter"),
-          available: inventoryItem.meter_amount || 0,
-          unit: "m",
-        });
-      if (product.is_khada)
-        fields.push({
-          name: "khada_amount",
-          label: t("sales.measurementLabels.khada"),
-          available: inventoryItem.khada_amount || 0,
-          unit: "pcs",
-        });
-      if (product.is_grain)
-        fields.push({
-          name: "grain_amount",
-          label: t("sales.measurementLabels.grain"),
-          available: inventoryItem.grain_amount || 0,
-          unit: t("sales.units.grainUnit"),
-        });
-
-      return fields;
-    },
-    [t]
-  );
-
   const calculateItemTotal = useCallback((item) => {
     if (!item.inventory || !item.sale_price) return 0;
-    const product = item.inventory.product_details || {};
-    const base = defaultPricingBase(product, item.pricing_base);
-    return calculatePricedLineTotal(item, item.sale_price, base);
+    return calculatePricedLineTotal(item, item.sale_price);
   }, []);
 
   // Memoized values
@@ -290,11 +235,9 @@ const EditSales = () => {
       ) {
         return false;
       }
-      return getActiveMeasurementFields(item.inventory).some(
-        (f) => item[f.name] && Number.parseFloat(item[f.name]) > 0
-      );
+      return item.quantity && Number.parseFloat(item.quantity) > 0;
     });
-  }, [saleItems, getActiveMeasurementFields]);
+  }, [saleItems]);
 
   useEffect(() => {
     if (customerSuccess && newCustomerData) {
@@ -321,8 +264,6 @@ const EditSales = () => {
 
     const nextFormValues = {
       customer: saleData.customer || "",
-      currency: saleData.currency || "AFN",
-      exchange_rate: saleData.exchange_rate || "",
       sale_date: formattedDate,
       freight_amount:
         saleData.freight_amount != null && saleData.freight_amount !== ""
@@ -344,14 +285,9 @@ const EditSales = () => {
           (details
             ? {
                 id: item.inventory,
-                thickness: details.thickness,
-                weight_amount: details.weight_amount,
-                meter_amount: details.meter_amount,
-                khada_amount: details.khada_amount,
-                grain_amount: details.grain_amount,
+                quantity: details.quantity,
                 buy_price: details.buy_price,
                 sell_price: details.sell_price,
-                currency: details.currency,
                 product_details:
                   details.product_details || {
                     name: details.product_name,
@@ -359,38 +295,19 @@ const EditSales = () => {
               }
             : null);
 
-        const product =
-          inventoryObj?.product_details ||
-          details?.product_details ||
-          {};
+        const qty = item.quantity;
 
         return {
           id: item.id || Date.now() + Math.random(),
           inventory: inventoryObj,
-          weight_amount:
-            item.weight_amount != null && item.weight_amount !== ""
-              ? String(item.weight_amount)
-              : "",
-          meter_amount:
-            item.meter_amount != null && item.meter_amount !== ""
-              ? String(item.meter_amount)
-              : "",
-          khada_amount:
-            item.khada_amount != null && item.khada_amount !== ""
-              ? String(item.khada_amount)
-              : "",
-          grain_amount:
-            item.grain_amount != null && item.grain_amount !== ""
-              ? String(item.grain_amount)
-              : "",
+          quantity:
+            qty != null && qty !== "" ? String(qty) : "",
           note: item.note || "",
           sale_price:
             item.sale_price != null && item.sale_price !== ""
               ? String(item.sale_price)
               : "",
           item_notes: item.item_notes || "",
-          pricing_base:
-            item.pricing_base || defaultPricingBase(product) || "",
           original_item: item,
         };
       });
@@ -467,17 +384,7 @@ const EditSales = () => {
   // Handlers
   const updateItemField = useCallback((id, field, value) => {
     setSaleItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const product = item.inventory?.product_details || {};
-        const sync = applyDualMeasurementSync({
-          productOrFlags: product,
-          ratioSource: item.inventory || {},
-          changedField: field,
-          changedValue: value,
-        });
-        return { ...item, ...sync };
-      })
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
   }, []);
 
@@ -495,27 +402,13 @@ const EditSales = () => {
 
         let initialSalePrice = "";
         if (newValue?.sell_price) {
-          const price = Number.parseFloat(newValue.sell_price);
-          initialSalePrice =
-            formValues.currency === "USD"
-              ? price.toString()
-              : formValues.exchange_rate
-              ? (price * Number.parseFloat(formValues.exchange_rate)).toFixed(2)
-              : "";
+          initialSalePrice = Number.parseFloat(newValue.sell_price).toString();
         }
 
         updateItemField(id, "inventory", newValue);
         updateItemField(id, "sale_price", initialSalePrice);
-        updateItemField(id, "weight_amount", "");
-        updateItemField(id, "meter_amount", "");
-        updateItemField(id, "khada_amount", "");
-        updateItemField(id, "grain_amount", "");
+        updateItemField(id, "quantity", "");
         updateItemField(id, "note", "");
-        updateItemField(
-          id,
-          "pricing_base",
-          defaultPricingBase(newValue.product_details || {})
-        );
 
         addMessage(
           t("sales.messages.productSelected", {
@@ -524,18 +417,13 @@ const EditSales = () => {
           "success"
         );
       } else {
-        // Clear selection
         updateItemField(id, "inventory", null);
         updateItemField(id, "sale_price", "");
-        updateItemField(id, "weight_amount", "");
-        updateItemField(id, "meter_amount", "");
-        updateItemField(id, "khada_amount", "");
-        updateItemField(id, "grain_amount", "");
+        updateItemField(id, "quantity", "");
         updateItemField(id, "note", "");
-        updateItemField(id, "pricing_base", "");
       }
     },
-    [saleItems, formValues.currency, formValues.exchange_rate, updateItemField, t]
+    [saleItems, updateItemField, t]
   );
 
   const addNewItem = useCallback(() => {
@@ -574,11 +462,6 @@ const EditSales = () => {
       validationMessages.push(t("sales.validation.addCompleteItem"));
     }
 
-    if (formValues.currency === "AFN" && !formValues.exchange_rate) {
-      newErrors.exchange_rate = true;
-      validationMessages.push(t("sales.validation.exchangeRateRequiredAfn"));
-    }
-
     if (
       Number.parseFloat(formValues.received_amount || 0) > 0 &&
       !formValues.payment_account
@@ -589,32 +472,18 @@ const EditSales = () => {
       );
     }
 
-    // Check stock quantities (include original line qty back into available)
     const itemsWithExceededQuantity = saleItems
       .filter((item) => item.inventory)
       .flatMap((item) => {
         const product = item.inventory.product_details || {};
-        const exceededFields = [];
-        const checks = [
-          ["is_weight", "weight_amount", "sales.measurementLabels.weight"],
-          ["is_meter", "meter_amount", "sales.measurementLabels.meter"],
-          ["is_khada", "khada_amount", "sales.measurementLabels.khada"],
-          ["is_grain", "grain_amount", "sales.measurementLabels.grain"],
-        ];
-        for (const [flag, field, labelKey] of checks) {
-          if (
-            product[flag] &&
-            Number.parseFloat(item[field] || 0) > getStockAvailable(item, field)
-          ) {
-            exceededFields.push(t(labelKey));
-          }
+        const qty = Number.parseFloat(item.quantity || 0);
+        const available = getStockAvailable(item);
+        if (qty > available) {
+          return [
+            `${product.name || "Item"} (${t("common.quantity", "Quantity")})`,
+          ];
         }
-
-        return exceededFields.length
-          ? [
-              `${product.name || "Item"} (${exceededFields.join(", ")})`,
-            ]
-          : [];
+        return [];
       });
 
     if (itemsWithExceededQuantity.length) {
@@ -637,9 +506,8 @@ const EditSales = () => {
       return;
     }
 
-    const saleData = {
+    const salePayload = {
       customer: formValues.customer,
-      currency: formValues.currency,
       sale_date: formValues.sale_date,
       total_amount: itemsSubtotal,
       freight_amount: freightNumeric.toFixed(2),
@@ -651,29 +519,15 @@ const EditSales = () => {
       items: completedItems.map((item) => ({
         ...(item.original_item?.id ? { id: item.original_item.id } : {}),
         inventory: item.inventory.id,
-        weight_amount: Number.parseFloat(item.weight_amount || 0).toFixed(2),
-        meter_amount: Number.parseFloat(item.meter_amount || 0).toFixed(2),
-        khada_amount: Number.parseFloat(item.khada_amount || 0).toFixed(2),
-        grain_amount: Number.parseFloat(item.grain_amount || 0).toFixed(2),
+        ...quantityPayload(item.quantity),
         note: item.note || "",
         sale_price: Number.parseFloat(item.sale_price).toFixed(2),
         item_notes: item.item_notes || "",
-        pricing_base:
-          defaultPricingBase(
-            item.inventory?.product_details || {},
-            item.pricing_base
-          ) || null,
       })),
     };
 
-    if (formValues.currency === "AFN") {
-      saleData.exchange_rate = Number.parseFloat(
-        formValues.exchange_rate
-      ).toFixed(2);
-    }
-
     addMessage(t("sales.messages.savingSale"), "info");
-    handleUpdate(id, saleData);
+    handleUpdate(id, salePayload);
   };
 
   const handleAddCustomer = async (customerData) => {
@@ -691,22 +545,14 @@ const EditSales = () => {
 
   const renderCartLine = (item) => {
     const isComplete = completedItems.includes(item);
-    const measurementFields = getActiveMeasurementFields(item.inventory);
     const lineTotal = calculateItemTotal(item);
-    const product = item.inventory?.product_details;
-    const dualUnits = getSelectedUnits(product || {}).length >= 2;
-    const fieldConfig = {
-      weight_amount: { step: "0.01" },
-      meter_amount: { step: "0.01" },
-      khada_amount: { step: "1" },
-      grain_amount: { step: "1" },
-    };
-    // product + measurements + [price by] + price + total + delete
-    const columns = 1 + measurementFields.length + (dualUnits ? 1 : 0) + 2 + 1;
+    const avail = getStockAvailable(item);
+    const exceeds =
+      item.quantity && Number.parseFloat(item.quantity) > Number(avail);
 
     return (
       <PosCartLine key={item.id} complete={isComplete}>
-        <PosItemRow columns={columns}>
+        <PosItemRow columns={5}>
           <PosItemCell>
             <PosField label={t("sales.tableHeaders.product")}>
               <SearchableSelect
@@ -714,11 +560,7 @@ const EditSales = () => {
                 value={item.inventory}
                 onChange={(newValue) => handleInventoryChange(item.id, newValue)}
                 getOptionLabel={(option) =>
-                  `${option.product_details?.name || ""}${
-                    option.thickness
-                      ? ` (${option.thickness} ${t("sales.units.mm")})`
-                      : ""
-                  }`
+                  option.product_details?.name || ""
                 }
                 placeholder="sales.placeholders.selectProduct"
                 loading={inventoryLoading}
@@ -726,52 +568,33 @@ const EditSales = () => {
             </PosField>
           </PosItemCell>
 
-          {measurementFields.map((field) => {
-            const cfg = fieldConfig[field.name];
-            const avail = getStockAvailable(item, field.name);
-            const exceeds =
-              item[field.name] &&
-              Number.parseFloat(item[field.name]) > Number(avail);
-            return (
-              <PosItemCell key={field.name}>
-                <PosField label={`${field.label} (${avail})`}>
-                  <Input
-                    type="number"
-                    value={item[field.name]}
-                    onChange={(e) =>
-                      updateItemField(item.id, field.name, e.target.value)
-                    }
-                    placeholder="0"
-                    step={cfg.step}
-                    min="0"
-                    title={`Available: ${avail}`}
-                    className={cn(
-                      posControlClass,
-                      "tabular-nums",
-                      exceeds && "border-destructive"
-                    )}
-                  />
-                </PosField>
-              </PosItemCell>
-            );
-          })}
-
-          {dualUnits ? (
-            <PosItemCell>
-              <PricingBaseSelect
-                product={product}
-                value={defaultPricingBase(product, item.pricing_base)}
-                onChange={(v) => updateItemField(item.id, "pricing_base", v)}
-              />
-            </PosItemCell>
-          ) : null}
-
           <PosItemCell>
             <PosField
-              label={t("sales.tableHeaders.priceWithCurrency", {
-                currency: formValues.currency,
-              })}
+              label={`${t("common.quantity", "Quantity")}${
+                item.inventory ? ` (${avail})` : ""
+              }`}
             >
+              <Input
+                type="number"
+                value={item.quantity}
+                onChange={(e) =>
+                  updateItemField(item.id, "quantity", e.target.value)
+                }
+                placeholder="0"
+                step="0.01"
+                min="0"
+                title={item.inventory ? `Available: ${avail}` : undefined}
+                className={cn(
+                  posControlClass,
+                  "tabular-nums",
+                  exceeds && "border-destructive"
+                )}
+              />
+            </PosField>
+          </PosItemCell>
+
+          <PosItemCell>
+            <PosField label={t("common.price", "Price")}>
               <Input
                 type="number"
                 value={item.sale_price}
@@ -794,7 +617,7 @@ const EditSales = () => {
                   isComplete ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                {lineTotal.toFixed(2)}
+                {formatShopMoney(lineTotal)}
               </div>
             </PosField>
           </PosItemCell>
@@ -822,7 +645,7 @@ const EditSales = () => {
               onChange={(e) => updateItemField(item.id, "note", e.target.value)}
               placeholder={t(
                 "sales.notePlaceholder",
-                "e.g. thickness or other line note…"
+                "Line note…"
               )}
               className={posControlClass}
               maxLength={255}
@@ -919,7 +742,7 @@ const EditSales = () => {
       <PosBody>
         <PosMain>
           <PosDocBar
-            title={t("sales.sections.customerAndCurrency", "Sale details")}
+            title={t("sales.saleDetails", "Sale details")}
             footer={
               <PosField label={t("sales.notes")}>
                 <Textarea
@@ -988,49 +811,6 @@ const EditSales = () => {
                 className={posControlClass}
               />
             </PosField>
-
-            <PosField label={t("sales.currency")}>
-              <Select
-                value={formValues.currency}
-                onValueChange={(value) =>
-                  setFormValues((prev) => ({ ...prev, currency: value }))
-                }
-              >
-                <SelectTrigger className={posControlClass}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AFN">AFN</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </PosField>
-
-            {formValues.currency === "AFN" ? (
-              <PosField
-                label={t("sales.exchangeRate")}
-                required
-                error={
-                  formSubmitted && errors.exchange_rate
-                    ? t("sales.exchangeRateRequired")
-                    : null
-                }
-              >
-                <Input
-                  type="number"
-                  value={formValues.exchange_rate}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      exchange_rate: e.target.value,
-                    }))
-                  }
-                  step="0.01"
-                  min="0.01"
-                  className={cn(posControlClass, "tabular-nums")}
-                />
-              </PosField>
-            ) : null}
 
             <PosField label={t("sales.labels.receivedAmountOptional")}>
               <Input
@@ -1131,37 +911,28 @@ const EditSales = () => {
         <PosSummary title={t("sales.orderSummary", "Summary")}>
           <PosTotalRow
             label={t("sales.itemsSubtotal")}
-            value={`${formValues.currency} ${itemsSubtotal}`}
+            value={formatShopMoney(itemsSubtotal)}
           />
           <PosTotalRow
             label={t("sales.freightKaraya")}
-            value={`${formValues.currency} ${freightNumeric.toFixed(2)}`}
+            value={formatShopMoney(freightNumeric)}
             muted
           />
           <div className="border-t border-border pt-2">
             <PosTotalRow
               label={t("common.total")}
-              value={`${formValues.currency} ${grandTotalNumeric.toFixed(2)}`}
+              value={formatShopMoney(grandTotalNumeric)}
               emphasize
             />
           </div>
           <PosTotalRow
             label={t("sales.received")}
-            value={`${formValues.currency} ${receivedNumeric.toFixed(2)}`}
+            value={formatShopMoney(receivedNumeric)}
           />
           <PosTotalRow
             label={t("sales.remainingAmount")}
-            value={`${formValues.currency} ${remainingNumeric.toFixed(2)}`}
+            value={formatShopMoney(remainingNumeric)}
           />
-          {formValues.currency === "AFN" && formValues.exchange_rate ? (
-            <PosTotalRow
-              label={t("sales.usdEquivalent")}
-              value={`USD ${(
-                grandTotalNumeric / Number.parseFloat(formValues.exchange_rate)
-              ).toFixed(2)}`}
-              muted
-            />
-          ) : null}
 
           <Button
             type="button"

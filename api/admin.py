@@ -247,12 +247,11 @@ class PayrollRunAdmin(admin.ModelAdmin):
         "run_date",
         "period_start",
         "period_end",
-        "currency",
         "total_amount",
         "status",
         "reference",
     )
-    list_filter = ("status", "currency", "run_date")
+    list_filter = ("status", "run_date")
     search_fields = ("reference", "memo", "id")
     ordering = ("-run_date", "-id")
     date_hierarchy = "run_date"
@@ -271,7 +270,7 @@ class PayrollRunLineAdmin(admin.ModelAdmin):
         "net_amount",
         "note",
     )
-    list_filter = ("payroll_run__status", "payroll_run__currency")
+    list_filter = ("payroll_run__status",)
     search_fields = ("employee__name", "note", "payroll_run__reference")
     autocomplete_fields = ("employee", "payroll_run")
     readonly_fields = ("net_amount",)

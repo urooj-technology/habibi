@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
-from api.choices import CurrencyCode, DocumentStatus
+from api.choices import DocumentStatus
 from api.models.data.base import DataRoot
 from api.models.data.employee import Employee
 
@@ -14,7 +14,6 @@ class PayrollRun(DataRoot):
     run_date = models.DateField(default=timezone.now)
     period_start = models.DateField()
     period_end = models.DateField()
-    currency = models.CharField(max_length=3, choices=CurrencyCode.choices, default=CurrencyCode.AFN)
     total_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     status = models.CharField(
         max_length=16,

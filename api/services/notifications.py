@@ -102,54 +102,19 @@ def notify_staff(
 
 
 def low_stock_reasons(inventory) -> list[str]:
-    """Return human-readable reasons why this stock row is low (empty list if OK)."""
-    product = getattr(inventory, "product", None)
-    reasons = []
-
-    checks = []
-    if product is None:
-        checks = [
-            ("weight", inventory.weight_amount, inventory.min_weight_amount),
-            ("meter", inventory.meter_amount, inventory.min_meter_amount),
-            ("khada", inventory.khada_amount, inventory.min_khada_amount),
-            ("grain", inventory.grain_amount, inventory.min_grain_amount),
-        ]
-    else:
-        if getattr(product, "is_weight", False):
-            checks.append(
-                ("weight", inventory.weight_amount, inventory.min_weight_amount)
-            )
-        if getattr(product, "is_meter", False):
-            checks.append(("meter", inventory.meter_amount, inventory.min_meter_amount))
-        if getattr(product, "is_khada", False):
-            checks.append(("khada", inventory.khada_amount, inventory.min_khada_amount))
-        if getattr(product, "is_grain", False):
-            checks.append(("grain", inventory.grain_amount, inventory.min_grain_amount))
-        if not checks:
-            checks = [
-                ("weight", inventory.weight_amount, inventory.min_weight_amount),
-                ("meter", inventory.meter_amount, inventory.min_meter_amount),
-                ("khada", inventory.khada_amount, inventory.min_khada_amount),
-                ("grain", inventory.grain_amount, inventory.min_grain_amount),
-            ]
-
-    for label, current, minimum in checks:
-        cur = _d(current)
-        mn = _d(minimum)
-        if cur <= mn:
-            reasons.append(f"{label} {cur} ≤ min {mn}")
-    return reasons
+    """Return reasons why this stock row is low (empty list if OK)."""
+    cur = _d(getattr(inventory, "quantity", 0))
+    mn = _d(getattr(inventory, "min_quantity", 0))
+    if cur <= mn:
+        return [f"quantity {cur} ≤ min {mn}"]
+    return []
 
 
 def notify_low_stock_if_needed(inventory) -> list:
-    """
-    Call explicitly after inventory quantities change (sale / purchase / edit).
-    No signals.
-    """
+    """Call after inventory quantities change (sale / purchase / edit)."""
     if inventory is None or not getattr(inventory, "pk", None):
         return []
 
-    # Ensure product is available for unit flags.
     if getattr(inventory, "product_id", None) and not getattr(inventory, "product", None):
         inventory.refresh_from_db()
 
@@ -163,18 +128,14 @@ def notify_low_stock_if_needed(inventory) -> list:
     elif inventory.product_id:
         product_name = f"#{inventory.product_id}"
 
-    thickness = (inventory.thickness or "").strip()
     title = f"Low stock: {product_name}"
-    message = f"{product_name}"
-    if thickness:
-        message += f" ({thickness})"
-    message += " — " + "; ".join(reasons)
+    message = f"{product_name} — " + "; ".join(reasons)
 
     return notify_staff(
         type=Notification.Type.LOW_STOCK,
         title=title[:255],
         message=message,
-        link=f"/app/inventory/stock",
+        link="/app/inventory/stock",
         ref_type="inventory",
         ref_id=inventory.pk,
         dedupe_unread=True,
