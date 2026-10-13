@@ -1567,19 +1567,16 @@
     "paymentOverdue": "پرداخت معوق"
   },
   "backup": {
-    "title": "پشتیبان‌گیری و بازیابی",
+    "title": "پشتیبان‌گیری",
     "title1": "پشتیبان‌گیری",
-    "backupDatabase": "پشتیبان‌گیری از داده‌ها",
-    "restore": "بازیابی",
-    "delete": "حذف",
+    "subtitle": "ایجاد و دانلود پشتیبان سیستم",
+    "backupDatabase": "ایجاد پشتیبان",
+    "availableBackups": "پشتیبان‌های موجود",
+    "availableBackupsSub": "دانلود پشتیبان برای نگهداری آفلاین",
     "noBackupsFound": "پشتیبانی یافت نشد",
     "created": "ایجاد شده",
-    "backupRestoredSuccessfully": "پشتیبان با موفقیت بازیابی شد",
-    "failedToRestoreBackup": "خطا در بازیابی پشتیبان",
     "backupCreatedSuccessfully": "پشتیبان با موفقیت ایجاد شد",
-    "failedToCreateBackup": "خطا در ایجاد پشتیبان",
-    "restoreTooltip": "بازیابی این پشتیبان",
-    "deleteTooltip": "حذف این پشتیبان"
+    "failedToCreateBackup": "خطا در ایجاد پشتیبان"
   },
   "product": {
     "title": "اجناس",

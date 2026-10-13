@@ -17,9 +17,8 @@ from account.views import (
 )
 from account.backup import (
     backup_database,
-    restore_database,
     list_backups,
-    delete_backup,
+    download_backup,
 )
 from knox import views as knox_views
 
@@ -49,7 +48,6 @@ urlpatterns = [
     path("roles/<int:pk>/", RoleDetailView.as_view(), name="role-detail"),
     # Backup section
     path("backup/", backup_database, name="backup_database"),
-    path("restore/", restore_database, name="restore_database"),
     path("list-backups/", list_backups, name="list_backups"),
-    path("delete-backup/", delete_backup, name="delete_backup"),
+    path("download-backup/", download_backup, name="download_backup"),
 ]

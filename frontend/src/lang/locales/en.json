@@ -16,6 +16,7 @@
     "noDescription": "No Description",
     "noNotes": "No notes",
     "clearAll": "Clear All",
+    "download": "Download",
     "select": "Select",
     "selected": "Selected",
     "units": "Units",
@@ -1581,19 +1582,16 @@
     "paymentOverdue": "Payment overdue"
   },
   "backup": {
-    "title": "Backup and Restore",
+    "title": "Backup",
     "title1": "Backup",
-    "backupDatabase": "Backup Database",
-    "restore": "Restore",
-    "delete": "Delete",
+    "subtitle": "Create and download system backups",
+    "backupDatabase": "Create backup",
+    "availableBackups": "Available backups",
+    "availableBackupsSub": "Download backup snapshots to keep offline",
     "noBackupsFound": "No backups found",
     "created": "Created",
-    "backupRestoredSuccessfully": "Backup restored successfully",
-    "failedToRestoreBackup": "Failed to restore backup",
     "backupCreatedSuccessfully": "Backup created successfully",
-    "failedToCreateBackup": "Failed to create backup",
-    "restoreTooltip": "Restore this backup",
-    "deleteTooltip": "Delete this backup"
+    "failedToCreateBackup": "Failed to create backup"
   },
   "product": {
     "title": "Products",

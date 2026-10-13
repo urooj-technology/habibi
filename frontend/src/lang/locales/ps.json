@@ -1561,19 +1561,16 @@
     "paymentOverdue": "تادیه له مودې تیره"
   },
   "backup": {
-    "title": "بیک اپ و بیرته راوړل",
+    "title": "بیک اپ",
     "title1": "بیک اپ",
+    "subtitle": "د سیستم بیک اپ جوړول او ډاونلوډ",
     "backupDatabase": "بیک اپ جوړول",
-    "restore": "بیک اپ بیرته راوړل",
-    "delete": "بیک اپ حذف کړئ",
+    "availableBackups": "شته بیک اپونه",
+    "availableBackupsSub": "بیک اپ ډاونلوډ کړئ ترڅو آفلاین وساتئ",
     "noBackupsFound": "هیڅ بیک اپ ونه موندل شو",
     "created": "جوړ شوی",
-    "backupRestoredSuccessfully": "بیک اپ بیرته راوړل شو",
-    "failedToRestoreBackup": "خطا در بیک اپ بیرته راوړل",
-    "backupCreatedSuccessfully": "بیک اپ جوړل شو",
-    "failedToCreateBackup": "خطا در بیک اپ جوړل",
-    "restoreTooltip": "دا بیک اپ بیرته راوړئ",
-    "deleteTooltip": "دا بیک اپ ړنګ کړئ"
+    "backupCreatedSuccessfully": "بیک اپ جوړ شو",
+    "failedToCreateBackup": "د بیک اپ جوړولو کې تېروتنه"
   },
   "product": {
     "title": "اجناس",
