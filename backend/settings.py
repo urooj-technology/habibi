@@ -144,11 +144,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = config("STATIC_URL")
-STATIC_ROOT = config("STATIC_ROOT")
+def _int_or(default):
+    """decouple cast that treats an empty .env value as the default."""
+    return lambda v: int(v) if str(v).strip() else default
 
-MEDIA_URL = config("MEDIA_URL")
-MEDIA_ROOT = config("MEDIA_ROOT")
+
+STATIC_URL = config("STATIC_URL", default="static/") or "static/"
+STATIC_ROOT = config("STATIC_ROOT", default="static/") or "static/"
+
+MEDIA_URL = config("MEDIA_URL", default="media/") or "media/"
+MEDIA_ROOT = config("MEDIA_ROOT", default="media/") or "media/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -177,22 +182,27 @@ REST_FRAMEWORK = {
 }
 
 # Email Configuration
-EMAIL_BACKEND = config('EMAIL_BACKEND')
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_BACKEND = (
+    config('EMAIL_BACKEND', default='')
+    or 'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = config('EMAIL_HOST', default='localhost') or 'localhost'
+EMAIL_PORT = config('EMAIL_PORT', default='465', cast=_int_or(465))
 EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
-EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = (
+    config('DEFAULT_FROM_EMAIL', default='') or EMAIL_HOST_USER or 'noreply@localhost'
+)
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default='30', cast=_int_or(30))
 
 # Frontend URL for email links
-FRONTEND_URL = config('FRONTEND_URL')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173') or 'http://localhost:5173'
 
 # Add Knox settings
 REST_KNOX = {
-    'TOKEN_TTL': timedelta(days=config('TOKEN_EXPIRY_DAYS', default=7, cast=int)),
-    'TOKEN_LIMIT_PER_USER': config('TOKEN_LIMIT', default=0, cast=int),
+    'TOKEN_TTL': timedelta(days=config('TOKEN_EXPIRY_DAYS', default='7', cast=_int_or(7))),
+    'TOKEN_LIMIT_PER_USER': config('TOKEN_LIMIT', default='0', cast=_int_or(0)),
     'AUTO_REFRESH': True,
 }
 
