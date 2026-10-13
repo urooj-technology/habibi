@@ -630,6 +630,7 @@
     },
     "customerOptional": "پیرودونکی (اختیاري)",
     "walkInCustomer": "نغدي / حضوري پلور",
+    "walkInReceivedLocked": "حضوري پلور باید بشپړ تادیه شي",
     "validation": {
       "selectCustomer": "مهرباني وکړئ پیرودونکی وټاکئ",
       "addCompleteItem": "لږترلږه یوه بشپړه کرښه اضافه کړئ",
@@ -806,6 +807,7 @@
     "supplierRequired": "د تحویلونکي معلومات ضروري دی",
     "supplierOptional": "عرضه کوونکی (اختیاري)",
     "walkInSupplier": "نغدي / پرته له ثبت عرضه کوونکي",
+    "walkInReceivedLocked": "پېرودنه پرته له عرضه کوونکي باید بشپړه تادیه شي",
     "validation": {
       "walkInMustPayFull": "پېرودنه پرته له عرضه کوونکي باید بشپړه تادیه شي، یا د پور لپاره عرضه کوونکی وټاکئ."
     },

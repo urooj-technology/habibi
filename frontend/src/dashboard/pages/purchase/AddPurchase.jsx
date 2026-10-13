@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -287,9 +287,37 @@ const AddPurchase = () => {
     [purchaseItems]
   );
 
+  const isWalkIn = !formData.supplier;
+  const prevTotalRef = useRef(totalAmount);
+
   // Effects
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, total_amount: totalAmount }));
+    setFormData((prev) => {
+      const walkIn = !prev.supplier;
+      const prevTotal = prevTotalRef.current;
+      prevTotalRef.current = totalAmount;
+      let received = prev.received_amount;
+      if (walkIn) {
+        received = totalAmount;
+      } else {
+        const tracksTotal =
+          received === "" ||
+          received == null ||
+          Number.parseFloat(received || 0) === Number.parseFloat(prevTotal || 0);
+        if (tracksTotal) received = totalAmount;
+      }
+      if (
+        prev.total_amount === totalAmount &&
+        prev.received_amount === received
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        total_amount: totalAmount,
+        received_amount: received,
+      };
+    });
   }, [totalAmount]);
 
   const draftData = useMemo(
@@ -499,7 +527,9 @@ const AddPurchase = () => {
         supplier: formData.supplier?.id || null,
         purchase_date: formData.purchase_date,
         total_amount: formatAmount(formData.total_amount),
-        received_amount: formatAmount(formData.received_amount),
+        received_amount: formatAmount(
+          !formData.supplier ? totalAmount : formData.received_amount
+        ),
         payment_account: formData.payment_account?.id || null,
         items: completedItems.map((item) => ({
           product: item.product.id,
@@ -556,9 +586,11 @@ const AddPurchase = () => {
     }
   }, [productForm, addMessage, t, handleAddProduct]);
 
-  const receivedNumeric = Number.parseFloat(formData.received_amount || 0) || 0;
-  const remainingNumeric =
-    Number.parseFloat(totalAmount) - receivedNumeric;
+  const grandTotalNumeric = Number.parseFloat(totalAmount) || 0;
+  const receivedNumeric = isWalkIn
+    ? grandTotalNumeric
+    : Number.parseFloat(formData.received_amount || 0) || 0;
+  const remainingNumeric = grandTotalNumeric - receivedNumeric;
 
   const renderCartLine = (item) => {
     const isComplete = completedItems.includes(item);
@@ -748,7 +780,16 @@ const AddPurchase = () => {
                     options={suppliers}
                     value={formData.supplier}
                     onChange={(newValue) =>
-                      setFormData((prev) => ({ ...prev, supplier: newValue }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        supplier: newValue,
+                        ...(!newValue
+                          ? { received_amount: totalAmount }
+                          : prev.received_amount === "" ||
+                              prev.received_amount == null
+                            ? { received_amount: totalAmount }
+                            : {}),
+                      }))
                     }
                     getOptionLabel={(option) => option.name}
                     error={formSubmitted && errors.supplier}
@@ -784,23 +825,41 @@ const AddPurchase = () => {
               />
             </PosField>
 
-            <PosField label={t("purchase.receivedAmount", "Received Amount")}>
+            <PosField
+              label={t("purchase.receivedAmount", "Received Amount")}
+              hint={
+                isWalkIn
+                  ? t(
+                      "purchase.walkInReceivedLocked",
+                      "Purchases without a supplier are paid in full"
+                    )
+                  : null
+              }
+            >
               <Input
                 type="number"
-                value={formData.received_amount}
-                onChange={(e) =>
+                value={isWalkIn ? totalAmount : formData.received_amount}
+                onChange={(e) => {
+                  if (isWalkIn) return;
                   setFormData((prev) => ({
                     ...prev,
                     received_amount: e.target.value,
-                  }))
-                }
+                  }));
+                }}
                 step="0.01"
                 min="0"
-                className={cn(posControlClass, "tabular-nums")}
+                max={grandTotalNumeric || undefined}
+                disabled={isWalkIn}
+                readOnly={isWalkIn}
+                className={cn(
+                  posControlClass,
+                  "tabular-nums",
+                  isWalkIn && "bg-muted/50 text-muted-foreground"
+                )}
               />
             </PosField>
 
-            {Number.parseFloat(formData.received_amount || 0) > 0 ? (
+            {receivedNumeric > 0 ? (
               <PosField
                 label={t("purchase.paymentAccount", "Cash/Bank Account")}
                 required

@@ -643,6 +643,7 @@
     },
     "customerOptional": "Customer (optional)",
     "walkInCustomer": "Walk-in / cash sale",
+    "walkInReceivedLocked": "Walk-in sales are paid in full",
     "validation": {
       "selectCustomer": "Please select a customer",
       "addCompleteItem": "Please add at least one complete item",
@@ -821,6 +822,7 @@
     "supplierRequired": "Supplier is required",
     "supplierOptional": "Supplier (optional)",
     "walkInSupplier": "Cash / unlisted vendor",
+    "walkInReceivedLocked": "Purchases without a supplier are paid in full",
     "validation": {
       "walkInMustPayFull": "Purchase without a supplier must be paid in full, or select a supplier for credit."
     },

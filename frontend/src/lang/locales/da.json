@@ -632,6 +632,7 @@
     },
     "customerOptional": "مشتری (اختیاری)",
     "walkInCustomer": "فروش نقدی / حضوری",
+    "walkInReceivedLocked": "فروش حضوری باید کامل پرداخت شود",
     "validation": {
       "selectCustomer": "لطفاً مشتری را انتخاب کنید",
       "addCompleteItem": "حداقل یک سطر کامل اضافه کنید",
@@ -808,6 +809,7 @@
     "supplierRequired": "تأمین‌کننده الزامی است",
     "supplierOptional": "تأمین‌کننده (اختیاری)",
     "walkInSupplier": "نقدی / بدون ثبت تأمین‌کننده",
+    "walkInReceivedLocked": "خرید بدون تأمین‌کننده باید کامل پرداخت شود",
     "validation": {
       "walkInMustPayFull": "خرید بدون تأمین‌کننده باید کامل پرداخت شود، یا تأمین‌کننده را برای نسیه انتخاب کنید."
     },

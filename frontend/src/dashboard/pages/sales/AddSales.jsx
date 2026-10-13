@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -395,9 +395,11 @@ const AddSales = () => {
       customer: formValues.customer || null,
       sale_date: formValues.sale_date,
       total_amount: itemsSubtotal,
-      received_amount: formValues.received_amount
-        ? Number.parseFloat(formValues.received_amount).toFixed(2)
-        : "0.00",
+      received_amount: (
+        !formValues.customer
+          ? Number(itemsSubtotal) || 0
+          : Number.parseFloat(formValues.received_amount || 0) || 0
+      ).toFixed(2),
       payment_account: formValues.payment_account?.id || null,
       notes: formValues.notes,
       items: completedItems.map((item) => ({
@@ -420,8 +422,36 @@ const AddSales = () => {
     await handleAddCustomerApi(customerData);
   };
 
-  const grandTotalNumeric = Number(itemsSubtotal);
-  const receivedNumeric = Number.parseFloat(formValues.received_amount || 0) || 0;
+  const grandTotalNumeric = Number(itemsSubtotal) || 0;
+  const totalAmountStr = grandTotalNumeric.toFixed(2);
+  const isWalkIn = !formValues.customer;
+  const prevTotalRef = useRef(totalAmountStr);
+
+  // Walk-in: received always = total (locked). With customer: default to total.
+  useEffect(() => {
+    setFormValues((prev) => {
+      const walkIn = !prev.customer;
+      const prevTotal = prevTotalRef.current;
+      prevTotalRef.current = totalAmountStr;
+      if (walkIn) {
+        if (prev.received_amount === totalAmountStr) return prev;
+        return { ...prev, received_amount: totalAmountStr };
+      }
+      const recv = prev.received_amount;
+      const tracksTotal =
+        recv === "" ||
+        recv == null ||
+        Number.parseFloat(recv || 0) === Number.parseFloat(prevTotal || 0);
+      if (tracksTotal && prev.received_amount !== totalAmountStr) {
+        return { ...prev, received_amount: totalAmountStr };
+      }
+      return prev;
+    });
+  }, [totalAmountStr]);
+
+  const receivedNumeric = isWalkIn
+    ? grandTotalNumeric
+    : Number.parseFloat(formValues.received_amount || 0) || 0;
   const remainingNumeric = grandTotalNumeric - receivedNumeric;
 
   const renderCartLine = (item) => {
@@ -645,12 +675,19 @@ const AddSales = () => {
                     value={
                       customers.find((c) => c.id === formValues.customer) || null
                     }
-                    onChange={(newValue) =>
+                    onChange={(newValue) => {
+                      const customerId = newValue?.id || "";
                       setFormValues((prev) => ({
                         ...prev,
-                        customer: newValue?.id || "",
-                      }))
-                    }
+                        customer: customerId,
+                        ...(!customerId
+                          ? { received_amount: totalAmountStr }
+                          : prev.received_amount === "" ||
+                              prev.received_amount == null
+                            ? { received_amount: totalAmountStr }
+                            : {}),
+                      }));
+                    }}
                     getOptionLabel={(option) => option.name}
                     loading={customersLoading}
                     error={formSubmitted && errors.customer}
@@ -685,23 +722,45 @@ const AddSales = () => {
               />
             </PosField>
 
-            <PosField label={t("sales.labels.receivedAmountOptional")}>
+            <PosField
+              label={
+                isWalkIn
+                  ? t("sales.labels.receivedAmount", "Received amount")
+                  : t("sales.labels.receivedAmountOptional")
+              }
+              hint={
+                isWalkIn
+                  ? t(
+                      "sales.walkInReceivedLocked",
+                      "Walk-in sales are paid in full"
+                    )
+                  : null
+              }
+            >
               <Input
                 type="number"
-                value={formValues.received_amount}
-                onChange={(e) =>
+                value={isWalkIn ? totalAmountStr : formValues.received_amount}
+                onChange={(e) => {
+                  if (isWalkIn) return;
                   setFormValues((prev) => ({
                     ...prev,
                     received_amount: e.target.value,
-                  }))
-                }
+                  }));
+                }}
                 step="0.01"
                 min="0"
-                className={cn(posControlClass, "tabular-nums")}
+                max={grandTotalNumeric || undefined}
+                disabled={isWalkIn}
+                readOnly={isWalkIn}
+                className={cn(
+                  posControlClass,
+                  "tabular-nums",
+                  isWalkIn && "bg-muted/50 text-muted-foreground"
+                )}
               />
             </PosField>
 
-            {Number.parseFloat(formValues.received_amount || 0) > 0 ? (
+            {receivedNumeric > 0 ? (
               <PosField
                 label={t("sales.labels.paymentAccount", "Cash/Bank Account")}
                 required
