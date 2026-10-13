@@ -7,9 +7,9 @@ import {
   resolveLineProduct,
 } from "../../../utils/measurementConversion";
 
-/** 80mm thermal sale receipt — essentials only. */
+/** 80mm thermal sale receipt — localized labels. */
 const SalesPrint = forwardRef(({ sale }, ref) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const bill = useMemo(() => {
     if (!sale) return null;
@@ -21,11 +21,10 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
         item.inventory_details?.product_name ||
         product.name ||
         item.inventory_details?.product_details?.name ||
-        "جنس";
+        t("common.product", "Item");
       return {
         index: index + 1,
         productName,
-        note: item.note || "",
         qty: getLineQuantity(item),
         unitPrice: Number.parseFloat(item.sale_price) || 0,
         lineTotal: calculateSaleLineTotal(item),
@@ -48,7 +47,9 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
 
     const dateSource = sale.sale_date || sale.created_at;
     const date = dateSource ? new Date(dateSource) : new Date();
-    const currentDate = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
+    const locale =
+      i18n.language === "da" ? "fa-AF" : i18n.language === "ps" ? "ps-AF" : "en-GB";
+    const currentDate = date.toLocaleDateString(locale);
 
     return {
       lines,
@@ -56,38 +57,57 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
       receivedAmount,
       remainingAmount,
       currentDate,
-      customerName: sale.customer_details?.name || "نقدی / حضوری",
+      customerName:
+        sale.customer_details?.name ||
+        t("sales.walkInCustomer", "Walk-in / cash sale"),
       customerContact: sale.customer_details?.contact || "",
       id: sale.id || "#",
     };
-  }, [sale]);
+  }, [sale, t, i18n.language]);
 
   if (!sale || !bill) {
     return (
-      <div ref={ref} style={{ padding: 12, textAlign: "center", fontFamily: "Tahoma, sans-serif" }}>
+      <div
+        ref={ref}
+        style={{
+          padding: 12,
+          textAlign: "center",
+          fontFamily: "Tahoma, sans-serif",
+        }}
+      >
         {t("common.error")}: {t("sales.noDataToDisplay")}
       </div>
     );
   }
 
   const totals = [
-    { label: "مجموع", value: bill.invoiceTotal, strong: true },
-    { label: "پرداخت شده", value: bill.receivedAmount },
-    { label: "باقیمانده", value: bill.remainingAmount },
+    {
+      label: t("receipt.total", "Total"),
+      value: bill.invoiceTotal,
+      strong: true,
+    },
+    {
+      label: t("receipt.paid", "Paid"),
+      value: bill.receivedAmount,
+    },
+    {
+      label: t("receipt.remaining", "Remaining"),
+      value: bill.remainingAmount,
+    },
   ];
 
   return (
     <ThermalReceipt
       ref={ref}
-      docTitle="بل فروش"
+      docTitle={t("receipt.saleBill", "Sale bill")}
       docId={bill.id}
       dateLabel={bill.currentDate}
-      partyLabel="مشتری"
+      partyLabel={t("receipt.customer", "Customer")}
       partyName={bill.customerName}
       partyContact={bill.customerContact}
       lines={bill.lines}
       totals={totals}
-      footer="تشکر از خرید شما"
+      footer={t("receipt.thankYouSale", "Thank you for your purchase")}
     />
   );
 });

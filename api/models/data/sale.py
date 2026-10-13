@@ -32,12 +32,6 @@ class Sale(DataRoot):
     received_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
-    freight_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        help_text="Display-only freight; not included in total_amount.",
-    )
     payment_account = models.ForeignKey(
         "api.AccountingAccount",
         on_delete=models.SET_NULL,
@@ -60,7 +54,6 @@ class SaleItems(DataRoot):
     inventory = models.ForeignKey(
         Inventory, on_delete=models.CASCADE, related_name="sale_items"
     )
-    note = models.CharField(max_length=255, null=True, blank=True)
     quantity = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )

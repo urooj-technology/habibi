@@ -1560,6 +1560,26 @@
     "lowStockAlert": "د کمې ذخیرې خبرداری",
     "paymentOverdue": "تادیه له مودې تیره"
   },
+  "receipt": {
+    "phone": "0778450873 — 0782210000",
+    "number": "شمېره",
+    "date": "نېټه",
+    "contact": "اړیکه",
+    "item": "توکی",
+    "qty": "مقدار",
+    "price": "بیه",
+    "amount": "مبلغ",
+    "total": "مجموعه",
+    "paid": "تادیه شوی",
+    "remaining": "پاتې",
+    "customer": "پیرودونکی",
+    "supplier": "عرضه کوونکی",
+    "saleBill": "د پلور بل",
+    "purchaseBill": "د پېرودنې بل",
+    "thankYou": "مننه",
+    "thankYouSale": "د پیرودلو مننه",
+    "thankYouPurchase": "پېرودنه ثبت شوه"
+  },
   "backup": {
     "title": "بیک اپ",
     "title1": "بیک اپ",

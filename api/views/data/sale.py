@@ -129,7 +129,6 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
             quantity = self._line_qty(item_data)
             sale_price = self._d(item_data.get("sale_price", 0))
-            note = str(item_data.get("note", "") or "")
 
             stock_error = self._check_stock(inventory, quantity)
             if stock_error:
@@ -141,7 +140,6 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
                 quantity=quantity,
                 sale_price=sale_price,
                 buy_price=inventory.buy_price or Decimal("0"),
-                note=note,
             )
             self._adjust_stock(inventory, quantity, "subtract")
 
@@ -199,7 +197,6 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
             quantity = self._line_qty(item_data)
             sale_price = self._d(item_data.get("sale_price", 0))
-            note = str(item_data.get("note", "") or "")
 
             raw_id = item_data.get("id") or item_data.get("sale_item_id")
             try:
@@ -247,7 +244,6 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
                 old_item.quantity = quantity
                 old_item.sale_price = sale_price
                 old_item.buy_price = inventory.buy_price or Decimal("0")
-                old_item.note = note
                 old_item.save()
                 self._adjust_stock(inventory, quantity, "subtract")
                 kept_ids.add(old_item.id)
@@ -263,7 +259,6 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
                 quantity=quantity,
                 sale_price=sale_price,
                 buy_price=inventory.buy_price or Decimal("0"),
-                note=note,
             )
             self._adjust_stock(inventory, quantity, "subtract")
 

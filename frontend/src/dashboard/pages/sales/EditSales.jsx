@@ -86,9 +86,7 @@ const initialItemState = {
   id: Date.now(),
   inventory: null,
   quantity: "",
-  note: "",
   sale_price: "",
-  item_notes: "",
 };
 
 const EditSales = () => {
@@ -105,7 +103,6 @@ const EditSales = () => {
   const [formValues, setFormValues] = useState({
     customer: "",
     sale_date: new Date().toISOString().split("T")[0],
-    freight_amount: "",
     received_amount: "",
     payment_account: null,
     notes: "",
@@ -221,10 +218,6 @@ const EditSales = () => {
       .toFixed(2);
   }, [saleItems, calculateItemTotal]);
 
-  const freightNumeric = useMemo(
-    () => Math.max(0, parseFloat(formValues.freight_amount) || 0),
-    [formValues.freight_amount]
-  );
 
   const completedItems = useMemo(() => {
     return saleItems.filter((item) => {
@@ -265,10 +258,6 @@ const EditSales = () => {
     const nextFormValues = {
       customer: saleData.customer || "",
       sale_date: formattedDate,
-      freight_amount:
-        saleData.freight_amount != null && saleData.freight_amount !== ""
-          ? String(saleData.freight_amount)
-          : "",
       received_amount: saleData.received_amount || "",
       payment_account:
         accounts.find((a) => a.id === saleData.payment_account) || null,
@@ -302,12 +291,10 @@ const EditSales = () => {
           inventory: inventoryObj,
           quantity:
             qty != null && qty !== "" ? String(qty) : "",
-          note: item.note || "",
           sale_price:
             item.sale_price != null && item.sale_price !== ""
               ? String(item.sale_price)
               : "",
-          item_notes: item.item_notes || "",
           original_item: item,
         };
       });
@@ -408,7 +395,6 @@ const EditSales = () => {
         updateItemField(id, "inventory", newValue);
         updateItemField(id, "sale_price", initialSalePrice);
         updateItemField(id, "quantity", "");
-        updateItemField(id, "note", "");
 
         addMessage(
           t("sales.messages.productSelected", {
@@ -420,7 +406,6 @@ const EditSales = () => {
         updateItemField(id, "inventory", null);
         updateItemField(id, "sale_price", "");
         updateItemField(id, "quantity", "");
-        updateItemField(id, "note", "");
       }
     },
     [saleItems, updateItemField, t]
@@ -516,7 +501,6 @@ const EditSales = () => {
       customer: formValues.customer || null,
       sale_date: formValues.sale_date,
       total_amount: itemsSubtotal,
-      freight_amount: freightNumeric.toFixed(2),
       received_amount: formValues.received_amount
         ? Number.parseFloat(formValues.received_amount).toFixed(2)
         : "0.00",
@@ -526,9 +510,7 @@ const EditSales = () => {
         ...(item.original_item?.id ? { id: item.original_item.id } : {}),
         inventory: item.inventory.id,
         ...quantityPayload(item.quantity),
-        note: item.note || "",
         sale_price: Number.parseFloat(item.sale_price).toFixed(2),
-        item_notes: item.item_notes || "",
       })),
     };
 
@@ -644,20 +626,6 @@ const EditSales = () => {
             )}
           </PosItemCell>
         </PosItemRow>
-        <div className="mt-1.5">
-          <PosField label={t("sales.tableHeaders.note", "Note")}>
-            <Input
-              value={item.note || ""}
-              onChange={(e) => updateItemField(item.id, "note", e.target.value)}
-              placeholder={t(
-                "sales.notePlaceholder",
-                "Line note…"
-              )}
-              className={posControlClass}
-              maxLength={255}
-            />
-          </PosField>
-        </div>
       </PosCartLine>
     );
   };
@@ -868,27 +836,6 @@ const EditSales = () => {
               </PosField>
             ) : null}
 
-            <PosField
-              label={t("sales.freightKaraya")}
-              hint={t(
-                "sales.freightNotInTotal",
-                "Informational only — not added to sale total"
-              )}
-            >
-              <Input
-                type="number"
-                value={formValues.freight_amount}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    freight_amount: e.target.value,
-                  }))
-                }
-                min="0"
-                step="0.01"
-                className={cn(posControlClass, "tabular-nums")}
-              />
-            </PosField>
           </PosDocBar>
 
           <PosItems
@@ -918,15 +865,6 @@ const EditSales = () => {
         </PosMain>
 
         <PosSummary title={t("sales.orderSummary", "Summary")}>
-          <PosTotalRow
-            label={t("sales.itemsSubtotal")}
-            value={formatShopMoney(itemsSubtotal)}
-          />
-          <PosTotalRow
-            label={t("sales.freightKaraya")}
-            value={formatShopMoney(freightNumeric)}
-            muted
-          />
           <div className="border-t border-border pt-2">
             <PosTotalRow
               label={t("common.total")}

@@ -83,9 +83,7 @@ const initialItemState = {
   id: Date.now(),
   inventory: null,
   quantity: "",
-  note: "",
   sale_price: "",
-  item_notes: "",
 };
 
 function isSaleDraftMeaningful(payload) {
@@ -93,14 +91,12 @@ function isSaleDraftMeaningful(payload) {
   const items = payload?.saleItems || [];
   if (fv.customer) return true;
   if (fv.notes?.trim()) return true;
-  if (fv.freight_amount && Number.parseFloat(fv.freight_amount) > 0) return true;
   if (fv.received_amount && Number.parseFloat(fv.received_amount) > 0) return true;
   if (fv.payment_account) return true;
   return items.some(
     (item) =>
       item.inventory ||
       (item.sale_price && Number.parseFloat(item.sale_price) > 0) ||
-      item.note?.trim() ||
       (item.quantity && Number.parseFloat(item.quantity) > 0)
   );
 }
@@ -115,7 +111,6 @@ const AddSales = () => {
   const [formValues, setFormValues] = useState({
     customer: "",
     sale_date: new Date().toISOString().split("T")[0],
-    freight_amount: "",
     received_amount: "",
     payment_account: null,
     notes: "",
@@ -210,10 +205,6 @@ const AddSales = () => {
       .toFixed(2);
   }, [saleItems, calculateItemTotal]);
 
-  const freightNumeric = useMemo(
-    () => Math.max(0, parseFloat(formValues.freight_amount) || 0),
-    [formValues.freight_amount]
-  );
 
   const completedItems = useMemo(() => {
     return saleItems.filter((item) => {
@@ -297,7 +288,6 @@ const AddSales = () => {
         updateItemField(id, "inventory", newValue);
         updateItemField(id, "sale_price", initialSalePrice);
         updateItemField(id, "quantity", "");
-        updateItemField(id, "note", "");
 
         addMessage(
           t("sales.messages.productSelected", {
@@ -309,7 +299,6 @@ const AddSales = () => {
         updateItemField(id, "inventory", null);
         updateItemField(id, "sale_price", "");
         updateItemField(id, "quantity", "");
-        updateItemField(id, "note", "");
       }
     },
     [saleItems, updateItemField, t]
@@ -406,7 +395,6 @@ const AddSales = () => {
       customer: formValues.customer || null,
       sale_date: formValues.sale_date,
       total_amount: itemsSubtotal,
-      freight_amount: freightNumeric.toFixed(2),
       received_amount: formValues.received_amount
         ? Number.parseFloat(formValues.received_amount).toFixed(2)
         : "0.00",
@@ -415,9 +403,7 @@ const AddSales = () => {
       items: completedItems.map((item) => ({
         inventory: item.inventory.id,
         ...quantityPayload(item.quantity),
-        note: item.note || "",
         sale_price: Number.parseFloat(item.sale_price).toFixed(2),
-        item_notes: item.item_notes || "",
       })),
     };
 
@@ -533,20 +519,6 @@ const AddSales = () => {
             )}
           </PosItemCell>
         </PosItemRow>
-        <div className="mt-1.5">
-          <PosField label={t("sales.tableHeaders.note", "Note")}>
-            <Input
-              value={item.note || ""}
-              onChange={(e) => updateItemField(item.id, "note", e.target.value)}
-              placeholder={t(
-                "sales.notePlaceholder",
-                "Line note…"
-              )}
-              className={posControlClass}
-              maxLength={255}
-            />
-          </PosField>
-        </div>
       </PosCartLine>
     );
   };
@@ -760,27 +732,6 @@ const AddSales = () => {
               </PosField>
             ) : null}
 
-            <PosField
-              label={t("sales.freightKaraya")}
-              hint={t(
-                "sales.freightNotInTotal",
-                "Informational only — not added to sale total"
-              )}
-            >
-              <Input
-                type="number"
-                value={formValues.freight_amount}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    freight_amount: e.target.value,
-                  }))
-                }
-                min="0"
-                step="0.01"
-                className={cn(posControlClass, "tabular-nums")}
-              />
-            </PosField>
           </PosDocBar>
 
           <PosItems
@@ -810,15 +761,6 @@ const AddSales = () => {
         </PosMain>
 
         <PosSummary title={t("sales.orderSummary", "Summary")}>
-          <PosTotalRow
-            label={t("sales.itemsSubtotal")}
-            value={formatShopMoney(itemsSubtotal)}
-          />
-          <PosTotalRow
-            label={t("sales.freightKaraya")}
-            value={formatShopMoney(freightNumeric)}
-            muted
-          />
           <div className="border-t border-border pt-2">
             <PosTotalRow
               label={t("common.total")}

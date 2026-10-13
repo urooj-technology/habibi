@@ -1581,6 +1581,26 @@
     "lowStockAlert": "Low stock alert",
     "paymentOverdue": "Payment overdue"
   },
+  "receipt": {
+    "phone": "0778450873 — 0782210000",
+    "number": "No.",
+    "date": "Date",
+    "contact": "Contact",
+    "item": "Item",
+    "qty": "Qty",
+    "price": "Price",
+    "amount": "Amount",
+    "total": "Total",
+    "paid": "Paid",
+    "remaining": "Remaining",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "saleBill": "Sale bill",
+    "purchaseBill": "Purchase bill",
+    "thankYou": "Thank you",
+    "thankYouSale": "Thank you for your purchase",
+    "thankYouPurchase": "Purchase recorded"
+  },
   "backup": {
     "title": "Backup",
     "title1": "Backup",

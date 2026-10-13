@@ -17,12 +17,20 @@ export const THERMAL_PRINT_CSS = `
   }
 `;
 
-export function openThermalPrint(innerHtml, title = "Print") {
+export function openThermalPrint(innerHtml, title = "Print", { dir, lang } = {}) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return false;
+  const htmlDir =
+    dir ||
+    (typeof document !== "undefined" ? document.documentElement.dir : "ltr") ||
+    "ltr";
+  const htmlLang =
+    lang ||
+    (typeof document !== "undefined" ? document.documentElement.lang : "en") ||
+    "en";
   printWindow.document.open();
   printWindow.document.write(`<!DOCTYPE html>
-<html dir="rtl" lang="fa">
+<html dir="${htmlDir}" lang="${htmlLang}">
 <head>
   <meta charset="utf-8" />
   <title>${String(title).replace(/</g, "")}</title>

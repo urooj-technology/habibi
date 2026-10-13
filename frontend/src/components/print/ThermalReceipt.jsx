@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { COMPANY } from "@/utils/printDocument";
+import { useTranslation } from "react-i18next";
 
 const FONT =
   "Tahoma, 'Segoe UI', 'Noto Naskh Arabic', 'Noto Sans Arabic', Arial, sans-serif";
@@ -18,7 +18,7 @@ export function formatQty(amount) {
 }
 
 /**
- * Compact 80mm thermal receipt shell — black/white, no fillers.
+ * Compact 80mm thermal receipt — labels follow active UI language.
  */
 const ThermalReceipt = forwardRef(function ThermalReceipt(
   {
@@ -34,11 +34,15 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
   },
   ref
 ) {
+  const { t } = useTranslation();
+  const shopName = t("common.shortName", "Poshak Habibi");
+  const phone = t("receipt.phone", "0778450873 — 0782210000");
+
   return (
     <div ref={ref} style={s.page}>
       <header style={s.header}>
-        <div style={s.shopName}>{COMPANY.name}</div>
-        <div style={s.shopMeta}>{COMPANY.phone.replace(/^تلفن:\s*/, "")}</div>
+        <div style={s.shopName}>{shopName}</div>
+        <div style={s.shopMeta}>{phone}</div>
       </header>
 
       <div style={s.rule} />
@@ -46,19 +50,21 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
       <div style={s.docTitle}>{docTitle}</div>
 
       <div style={s.metaBlock}>
-        <MetaRow label="شماره" value={`#${docId}`} />
-        <MetaRow label="تاریخ" value={dateLabel} />
+        <MetaRow label={t("receipt.number", "No.")} value={`#${docId}`} />
+        <MetaRow label={t("receipt.date", "Date")} value={dateLabel} />
         <MetaRow label={partyLabel} value={partyName} />
-        {partyContact ? <MetaRow label="تماس" value={partyContact} /> : null}
+        {partyContact ? (
+          <MetaRow label={t("receipt.contact", "Contact")} value={partyContact} />
+        ) : null}
       </div>
 
       <div style={s.rule} />
 
       <div style={s.colHead}>
-        <span style={s.colItem}>جنس</span>
-        <span style={s.colQty}>مقدار</span>
-        <span style={s.colPrice}>فی</span>
-        <span style={s.colTotal}>مبلغ</span>
+        <span style={s.colItem}>{t("receipt.item", "Item")}</span>
+        <span style={s.colQty}>{t("receipt.qty", "Qty")}</span>
+        <span style={s.colPrice}>{t("receipt.price", "Price")}</span>
+        <span style={s.colTotal}>{t("receipt.amount", "Amount")}</span>
       </div>
 
       <div style={s.dash} />
@@ -71,7 +77,6 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
             <div style={s.lineName}>
               {row.index}. {row.productName}
             </div>
-            {row.note ? <div style={s.lineNote}>{row.note}</div> : null}
             <div style={s.lineNums}>
               <span style={s.colItem} />
               <span style={s.colQty}>{formatQty(row.qty)}</span>
@@ -103,7 +108,9 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
 
       <div style={s.dash} />
 
-      <footer style={s.footer}>{footer || "تشکر از خرید شما"}</footer>
+      <footer style={s.footer}>
+        {footer || t("receipt.thankYou", "Thank you")}
+      </footer>
     </div>
   );
 });
@@ -128,7 +135,7 @@ const s = {
     fontFamily: FONT,
     fontSize: "11px",
     lineHeight: 1.35,
-    direction: "rtl",
+    direction: "inherit",
     boxSizing: "border-box",
   },
   header: {
@@ -179,7 +186,7 @@ const s = {
   metaValue: {
     fontSize: "11px",
     fontWeight: 700,
-    textAlign: "left",
+    textAlign: "end",
     wordBreak: "break-word",
   },
   colHead: {
@@ -189,10 +196,10 @@ const s = {
     fontWeight: 800,
     textAlign: "center",
   },
-  colItem: { flex: "1 1 auto", textAlign: "right", minWidth: 0 },
+  colItem: { flex: "1 1 auto", textAlign: "start", minWidth: 0 },
   colQty: { width: "14mm", flexShrink: 0, textAlign: "center" },
   colPrice: { width: "16mm", flexShrink: 0, textAlign: "center" },
-  colTotal: { width: "18mm", flexShrink: 0, textAlign: "left" },
+  colTotal: { width: "18mm", flexShrink: 0, textAlign: "end" },
   empty: {
     textAlign: "center",
     padding: "6px 0",
@@ -206,11 +213,6 @@ const s = {
     fontSize: "11px",
     fontWeight: 700,
     wordBreak: "break-word",
-  },
-  lineNote: {
-    fontSize: "9px",
-    opacity: 0.75,
-    marginTop: 1,
   },
   lineNums: {
     display: "flex",
@@ -241,7 +243,7 @@ const s = {
   totalValue: {
     fontVariantNumeric: "tabular-nums",
     fontWeight: 800,
-    textAlign: "left",
+    textAlign: "end",
   },
   footer: {
     textAlign: "center",

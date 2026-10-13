@@ -1566,6 +1566,26 @@
     "lowStockAlert": "هشدار موجودی کم",
     "paymentOverdue": "پرداخت معوق"
   },
+  "receipt": {
+    "phone": "0778450873 — 0782210000",
+    "number": "شماره",
+    "date": "تاریخ",
+    "contact": "تماس",
+    "item": "جنس",
+    "qty": "مقدار",
+    "price": "فی",
+    "amount": "مبلغ",
+    "total": "مجموع",
+    "paid": "پرداخت شده",
+    "remaining": "باقیمانده",
+    "customer": "مشتری",
+    "supplier": "عرضه کننده",
+    "saleBill": "بل فروش",
+    "purchaseBill": "بل خرید",
+    "thankYou": "تشکر",
+    "thankYouSale": "تشکر از خرید شما",
+    "thankYouPurchase": "ثبت خرید"
+  },
   "backup": {
     "title": "پشتیبان‌گیری",
     "title1": "پشتیبان‌گیری",

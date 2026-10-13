@@ -69,7 +69,6 @@ const SalesView = () => {
           item.inventory_details?.product_name ||
           product.name ||
           "—",
-        note: item.note || "",
         qty: getLineQuantity(item),
         unitPrice: Number.parseFloat(item.sale_price) || 0,
         lineTotal: calculateSaleLineTotal(item),
@@ -82,7 +81,6 @@ const SalesView = () => {
     [lines]
   );
 
-  const freightAmt = Math.max(0, Number.parseFloat(sale?.freight_amount || 0) || 0);
   const totalAmount =
     itemsSubtotal > 0
       ? itemsSubtotal
@@ -260,11 +258,6 @@ const SalesView = () => {
                         <p className="truncate text-sm font-semibold text-foreground">
                           {row.name}
                         </p>
-                        {row.note ? (
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {t("sales.tableHeaders.note")}: {row.note}
-                          </p>
-                        ) : null}
                       </PosItemCell>
                       <PosItemCell>
                         <p className="text-sm font-semibold tabular-nums">
@@ -301,21 +294,6 @@ const SalesView = () => {
         </PosMain>
 
         <PosSummary title={t("payment.summary", "Payment summary")}>
-          <PosTotalRow
-            label={t("sales.itemsSubtotal", "Items subtotal")}
-            value={formatShopMoney(totalAmount)}
-          />
-          <PosTotalRow
-            label={t("sales.freightKaraya", "Freight")}
-            value={formatShopMoney(freightAmt)}
-            muted
-          />
-          <p className="-mt-1 text-[10px] text-muted-foreground">
-            {t(
-              "sales.freightNotInTotal",
-              "Informational only — not added to sale total"
-            )}
-          </p>
           <div className="border-t border-border pt-2">
             <PosTotalRow
               label={t("sales.totalAmount")}
