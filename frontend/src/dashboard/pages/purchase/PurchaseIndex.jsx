@@ -56,6 +56,7 @@ import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "../../../config/env";
 import PurchasePrint from "./PurchasePrint";
 import { printDataTable } from "../../../utils/printDataTable";
+import { openThermalPrint } from "../../../utils/thermalPrint";
 
 function ActionBtn({ title, onClick, className, children }) {
   return (
@@ -204,18 +205,10 @@ const PurchaseIndex = () => {
       setSelectedPurchaseForPrint(full);
       setTimeout(() => {
         if (!printRef.current) return;
-        const printWindow = window.open("", "_blank");
-        if (!printWindow) return;
-        printWindow.document.write(`
-          <html><head><title>${t("common.print")} - #${purchase.id}</title>
-          <style>@page{size:A4;margin:10mm}html,body{margin:0;padding:0;background:#fff}</style>
-          </head><body>${printRef.current.innerHTML}</body></html>`);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 400);
+        openThermalPrint(
+          printRef.current.innerHTML,
+          `${t("common.print")} - #${purchase.id}`
+        );
       }, 300);
     } catch (e) {
       window.alert(e?.message || t("common.errorOccurred"));

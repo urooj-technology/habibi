@@ -59,6 +59,8 @@ import PageHeader from "../../../components/PageHeader";
 import { InlineAlert } from "../../../components/AlertMessage";
 import SearchableSelect from "../../../components/SearchableSelect";
 import SalesPrint from "./SalesPrint";
+import { openThermalPrint } from "../../../utils/thermalPrint";
+import { API_BASE_URL } from "../../../config/env";
 import {
   PageShell,
   ListCard,
@@ -193,22 +195,23 @@ const SalesIndex = () => {
 
   const { handleDelete, ConfirmDialog } = useDelete("sales", token, refetchSales);
 
-  const handlePrint = (sale) => {
-    setSelectedSaleForPrint(sale);
-    setTimeout(() => {
-      if (!printRef.current) return;
-      const printWindow = window.open("", "_blank");
-      printWindow.document.write(`
-        <html><head><title>${t("common.print")} - ${t("sales.saleDetails")}</title>
-        <style>@page{margin:0}body{margin:0;padding:0}</style></head>
-        <body><div>${printRef.current.innerHTML}</div></body></html>`);
-      printWindow.document.close();
-      printWindow.focus();
+  const handlePrint = async (sale) => {
+    try {
+      const headers = token ? { Authorization: `Token ${token}` } : {};
+      const res = await fetch(`${API_BASE_URL}/sales/${sale.id}/`, { headers });
+      if (!res.ok) throw new Error(t("common.errorOccurred"));
+      const full = await res.json();
+      setSelectedSaleForPrint(full);
       setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 500);
-    }, 500);
+        if (!printRef.current) return;
+        openThermalPrint(
+          printRef.current.innerHTML,
+          `${t("common.print")} - #${sale.id}`
+        );
+      }, 300);
+    } catch (e) {
+      window.alert(e?.message || t("common.errorOccurred"));
+    }
   };
 
   const handlePrintList = () => {

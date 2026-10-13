@@ -37,6 +37,7 @@ import {
 import { FullPageLoader } from "../../../components/LoadingScreen";
 import { InlineAlert } from "../../../components/AlertMessage";
 import PurchasePrint from "./PurchasePrint";
+import { openThermalPrint } from "../../../utils/thermalPrint";
 
 const formatQty = (amount) => {
   const n = Number(amount);
@@ -120,18 +121,10 @@ const PurchaseView = () => {
 
   const handlePrint = () => {
     if (!printRef.current || !purchase) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html><head><title>${t("common.print")} - #${purchase.id}</title>
-      <style>@page{size:A4;margin:10mm}html,body{margin:0;padding:0;background:#fff}</style>
-      </head><body>${printRef.current.innerHTML}</body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 400);
+    openThermalPrint(
+      printRef.current.innerHTML,
+      `${t("common.print")} - #${purchase.id}`
+    );
   };
 
   if (isLoading) return <FullPageLoader />;
