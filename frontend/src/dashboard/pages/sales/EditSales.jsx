@@ -125,7 +125,7 @@ const EditSales = () => {
     "inventory/",
     token
   );
-  const { data: accountsData = [] } = useFetchObjects(
+  const { data: accountsData = [], isLoading: accountsLoading } = useFetchObjects(
     ["accounting-accounts"],
     "accounting/accounts/?page_size=500",
     token
@@ -245,10 +245,10 @@ const EditSales = () => {
   useEffect(() => {
     if (!saleData || hydratedRef.current || fetchLoading) return;
     // Wait until inventory list attempted (even empty) so we can merge stock
-    if (inventoryLoading) return;
+    if (inventoryLoading || accountsLoading) return;
 
     const formattedDate = saleData.sale_date
-      ? new Date(saleData.sale_date).toISOString().split("T")[0]
+      ? String(saleData.sale_date).slice(0, 10)
       : new Date().toISOString().split("T")[0];
 
     const accounts = Array.isArray(accountsData)
@@ -260,7 +260,9 @@ const EditSales = () => {
       sale_date: formattedDate,
       received_amount: saleData.received_amount || "",
       payment_account:
-        accounts.find((a) => a.id === saleData.payment_account) || null,
+        accounts.find(
+          (a) => Number(a.id) === Number(saleData.payment_account)
+        ) || null,
       notes: saleData.notes || "",
     };
 
@@ -319,6 +321,7 @@ const EditSales = () => {
     inventory,
     inventoryLoading,
     accountsData,
+    accountsLoading,
   ]);
 
   const draftData = useMemo(

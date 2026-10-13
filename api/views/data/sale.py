@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from account.permissions import ModuleCRUDPermission
 from api.filters.sale_filters import SaleFilter
+from api.models.accounting.account import AccountingAccount
 from api.models.data.inventory import Inventory
 from api.models.data.sale import Sale, SaleItems
 from api.serializers.data.sale import SaleSerializer
@@ -49,6 +50,11 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
     def _d(self, value):
         return Decimal(str(value)) if value is not None else Decimal("0")
 
+    def _bad_request(self, payload):
+        """Return 400 and ensure the surrounding atomic block rolls back."""
+        transaction.set_rollback(True)
+        return Response(payload, status=status.HTTP_400_BAD_REQUEST)
+
     def _normalize_optional_customer(self, data):
         """Allow blank / empty customer for walk-in POS sales."""
         try:
@@ -81,6 +87,32 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
     def _line_qty(self, item_data):
         return self._d(item_data.get("quantity", item_data.get("grain_amount", 0)))
 
+    def _validate_payment_account(self, *, received, payment_account_id):
+        received_d = self._d(received)
+        if received_d <= 0:
+            return None
+        if not payment_account_id:
+            return {"error": "Select a cash/bank account for the payment."}
+        acc = AccountingAccount.objects.filter(
+            pk=payment_account_id, is_active=True
+        ).first()
+        if not acc:
+            return {"error": "Payment account not found."}
+        if acc.role not in (
+            AccountingAccount.Role.CASH,
+            AccountingAccount.Role.BANK,
+        ):
+            return {"error": "Payment account must be a cash or bank account."}
+        return None
+
+    def _locked_inventory(self, inventory_id):
+        return (
+            Inventory.objects.select_for_update()
+            .filter(id=inventory_id, is_deleted=False)
+            .select_related("product")
+            .first()
+        )
+
     def _check_stock(self, inventory, quantity):
         available = self._d(inventory.quantity)
         if available < quantity:
@@ -104,52 +136,88 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        sale_data = self._normalize_optional_customer(request.data)
-        sale_items_data = sale_data.pop("items", [])
+        try:
+            sale_data = self._normalize_optional_customer(request.data)
+            sale_items_data = sale_data.pop("items", [])
 
-        walk_err = self._validate_walk_in_settlement(
-            customer=sale_data.get("customer"),
-            total=sale_data.get("total_amount"),
-            received=sale_data.get("received_amount"),
-        )
-        if walk_err:
-            return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
-
-        sale_serializer = self.get_serializer(data=sale_data)
-        sale_serializer.is_valid(raise_exception=True)
-        sale = sale_serializer.save()
-
-        for item_data in sale_items_data:
-            inventory = Inventory.objects.filter(id=item_data.get("inventory")).first()
-            if not inventory:
-                return Response(
-                    {"error": f"Inventory with ID {item_data.get('inventory')} not found."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            quantity = self._line_qty(item_data)
-            sale_price = self._d(item_data.get("sale_price", 0))
-
-            stock_error = self._check_stock(inventory, quantity)
-            if stock_error:
-                return Response(stock_error, status=status.HTTP_400_BAD_REQUEST)
-
-            SaleItems.objects.create(
-                sale=sale,
-                inventory=inventory,
-                quantity=quantity,
-                sale_price=sale_price,
-                buy_price=inventory.buy_price or Decimal("0"),
+            walk_err = self._validate_walk_in_settlement(
+                customer=sale_data.get("customer"),
+                total=sale_data.get("total_amount"),
+                received=sale_data.get("received_amount"),
             )
-            self._adjust_stock(inventory, quantity, "subtract")
+            if walk_err:
+                return self._bad_request(walk_err)
 
-        return Response(
-            {"detail": "Sale created successfully."},
-            status=status.HTTP_201_CREATED,
-        )
+            pay_err = self._validate_payment_account(
+                received=sale_data.get("received_amount"),
+                payment_account_id=sale_data.get("payment_account"),
+            )
+            if pay_err:
+                return self._bad_request(pay_err)
+
+            if self._d(sale_data.get("received_amount")) <= 0:
+                sale_data["payment_account"] = None
+
+            sale_serializer = self.get_serializer(data=sale_data)
+            sale_serializer.is_valid(raise_exception=True)
+            sale = sale_serializer.save()
+
+            seen_inventory_ids = set()
+            for item_data in sale_items_data:
+                inv_id = item_data.get("inventory")
+                inventory = self._locked_inventory(inv_id)
+                if not inventory:
+                    return self._bad_request(
+                        {"error": f"Inventory with ID {inv_id} not found."}
+                    )
+
+                if inv_id in seen_inventory_ids:
+                    return self._bad_request(
+                        {
+                            "error": (
+                                f"Duplicate inventory line for "
+                                f"{inventory.product.name}. Merge quantities into one line."
+                            )
+                        }
+                    )
+                seen_inventory_ids.add(inv_id)
+
+                quantity = self._line_qty(item_data)
+                sale_price = self._d(item_data.get("sale_price", 0))
+
+                if quantity <= 0:
+                    return self._bad_request(
+                        {"error": "Each sale line must have quantity greater than zero."}
+                    )
+
+                stock_error = self._check_stock(inventory, quantity)
+                if stock_error:
+                    return self._bad_request(stock_error)
+
+                SaleItems.objects.create(
+                    sale=sale,
+                    inventory=inventory,
+                    quantity=quantity,
+                    sale_price=sale_price,
+                    buy_price=inventory.buy_price or Decimal("0"),
+                )
+                self._adjust_stock(inventory, quantity, "subtract")
+
+            return Response(
+                {"detail": "Sale created successfully."},
+                status=status.HTTP_201_CREATED,
+            )
+        except ValueError as e:
+            return self._bad_request({"error": str(e)})
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):
+        try:
+            return self._update_sale(request, *args, **kwargs)
+        except ValueError as e:
+            return self._bad_request({"error": str(e)})
+
+    def _update_sale(self, request, *args, **kwargs):
         from api.models.data.sale_return import SaleReturnItem
         from api.views.data.sale_return import returned_qty_for_sale_item
 
@@ -163,7 +231,21 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
             received=sale_data.get("received_amount", sale.received_amount),
         )
         if walk_err:
-            return Response(walk_err, status=status.HTTP_400_BAD_REQUEST)
+            return self._bad_request(walk_err)
+
+        received_for_pay = sale_data.get("received_amount", sale.received_amount)
+        payment_account_id = sale_data.get(
+            "payment_account", sale.payment_account_id
+        )
+        pay_err = self._validate_payment_account(
+            received=received_for_pay,
+            payment_account_id=payment_account_id,
+        )
+        if pay_err:
+            return self._bad_request(pay_err)
+
+        if self._d(received_for_pay) <= 0:
+            sale_data["payment_account"] = None
 
         sale_serializer = self.get_serializer(sale, data=sale_data, partial=True)
         sale_serializer.is_valid(raise_exception=True)
@@ -173,13 +255,11 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
             return Response({"detail": "Sale updated successfully."}, status=status.HTTP_200_OK)
 
         if not isinstance(sale_items_data, list):
-            return Response(
-                {"error": "items must be a list."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return self._bad_request({"error": "items must be a list."})
 
         existing_items = {item.id: item for item in sale.sale_items.all()}
         kept_ids: set[int] = set()
+        seen_inventory_ids = set()
 
         def _has_returns(sale_item_id: int) -> bool:
             return SaleReturnItem.objects.filter(
@@ -188,15 +268,31 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
             ).exists()
 
         for item_data in sale_items_data:
-            inventory = Inventory.objects.filter(id=item_data.get("inventory")).first()
+            inv_id = item_data.get("inventory")
+            inventory = self._locked_inventory(inv_id)
             if not inventory:
-                return Response(
-                    {"error": f"Inventory with ID {item_data.get('inventory')} not found."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                return self._bad_request(
+                    {"error": f"Inventory with ID {inv_id} not found."}
                 )
+
+            if inv_id in seen_inventory_ids:
+                return self._bad_request(
+                    {
+                        "error": (
+                            f"Duplicate inventory line for "
+                            f"{inventory.product.name}. Merge quantities into one line."
+                        )
+                    }
+                )
+            seen_inventory_ids.add(inv_id)
 
             quantity = self._line_qty(item_data)
             sale_price = self._d(item_data.get("sale_price", 0))
+
+            if quantity <= 0:
+                return self._bad_request(
+                    {"error": "Each sale line must have quantity greater than zero."}
+                )
 
             raw_id = item_data.get("id") or item_data.get("sale_item_id")
             try:
@@ -209,28 +305,26 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
             if old_item is not None:
                 if _has_returns(old_item.id):
                     if old_item.inventory_id != inventory.id:
-                        return Response(
+                        return self._bad_request(
                             {
                                 "error": (
                                     f"Cannot change product on sale item #{old_item.id} "
                                     "because it has sales returns."
                                 )
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
+                            }
                         )
                     returned = returned_qty_for_sale_item(old_item.id)
                     if quantity < returned:
-                        return Response(
+                        return self._bad_request(
                             {
                                 "error": (
                                     f"Cannot reduce sale item #{old_item.id} below "
                                     f"returned quantity ({returned})."
                                 )
-                            },
-                            status=status.HTTP_400_BAD_REQUEST,
+                            }
                         )
 
-                old_inv = Inventory.objects.filter(id=old_item.inventory_id).first()
+                old_inv = self._locked_inventory(old_item.inventory_id)
                 if old_inv:
                     self._adjust_stock(old_inv, old_item.quantity, "add")
                     if old_inv.id == inventory.id:
@@ -238,12 +332,18 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
                 stock_error = self._check_stock(inventory, quantity)
                 if stock_error:
-                    return Response(stock_error, status=status.HTTP_400_BAD_REQUEST)
+                    return self._bad_request(stock_error)
+
+                # Freeze historical cost unless the product/inventory line changed.
+                if old_item.inventory_id == inventory.id:
+                    cost = old_item.buy_price or Decimal("0")
+                else:
+                    cost = inventory.buy_price or Decimal("0")
 
                 old_item.inventory = inventory
                 old_item.quantity = quantity
                 old_item.sale_price = sale_price
-                old_item.buy_price = inventory.buy_price or Decimal("0")
+                old_item.buy_price = cost
                 old_item.save()
                 self._adjust_stock(inventory, quantity, "subtract")
                 kept_ids.add(old_item.id)
@@ -251,7 +351,7 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
 
             stock_error = self._check_stock(inventory, quantity)
             if stock_error:
-                return Response(stock_error, status=status.HTTP_400_BAD_REQUEST)
+                return self._bad_request(stock_error)
 
             SaleItems.objects.create(
                 sale=sale,
@@ -266,16 +366,15 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
             if item_id in kept_ids:
                 continue
             if _has_returns(item_id):
-                return Response(
+                return self._bad_request(
                     {
                         "error": (
                             f"Cannot remove sale item #{item_id} because it has "
                             "sales returns linked to it."
                         )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
+                    }
                 )
-            inv = Inventory.objects.filter(id=old_item.inventory_id).first()
+            inv = self._locked_inventory(old_item.inventory_id)
             if inv:
                 self._adjust_stock(inv, old_item.quantity, "add")
             old_item.delete()
@@ -289,22 +388,24 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
     def destroy(self, request, *args, **kwargs):
         from api.models.data.sale_return import SaleReturn
 
-        sale = self.get_object()
-        if SaleReturn.objects.filter(sale_id=sale.id, is_deleted=False).exists():
-            return Response(
-                {
-                    "error": (
-                        "Cannot delete this sale because it has sales returns. "
-                        "Delete the returns first."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        try:
+            sale = self.get_object()
+            if SaleReturn.objects.filter(sale_id=sale.id, is_deleted=False).exists():
+                return self._bad_request(
+                    {
+                        "error": (
+                            "Cannot delete this sale because it has sales returns. "
+                            "Delete the returns first."
+                        )
+                    }
+                )
 
-        for item in sale.sale_items.all():
-            inv = Inventory.objects.filter(id=item.inventory_id).first()
-            if inv:
-                self._adjust_stock(inv, item.quantity, "add")
+            for item in sale.sale_items.all():
+                inv = self._locked_inventory(item.inventory_id)
+                if inv:
+                    self._adjust_stock(inv, item.quantity, "add")
 
-        sale.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            sale.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValueError as e:
+            return self._bad_request({"error": str(e)})

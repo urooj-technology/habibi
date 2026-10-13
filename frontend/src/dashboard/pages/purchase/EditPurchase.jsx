@@ -193,7 +193,7 @@ const EditPurchase = () => {
     token
   );
 
-  const { data: accountsData = [] } = useFetchObjects(
+  const { data: accountsData = [], isLoading: accountsLoading } = useFetchObjects(
     ["accounting-accounts"],
     "accounting/accounts/?page_size=500",
     token
@@ -365,9 +365,10 @@ const EditPurchase = () => {
   // Hydrate edit form once
   useEffect(() => {
     if (!purchase || hydratedRef.current || fetchLoading) return;
+    if (accountsLoading) return;
 
     const formattedDate = purchase.purchase_date
-      ? new Date(purchase.purchase_date).toISOString().split("T")[0]
+      ? String(purchase.purchase_date).slice(0, 10)
       : new Date().toISOString().split("T")[0];
 
     const accounts = Array.isArray(accountsData)
@@ -375,7 +376,7 @@ const EditPurchase = () => {
       : accountsData?.results || [];
 
     const supplierObj =
-      suppliers.find((s) => s.id === purchase.supplier) ||
+      suppliers.find((s) => Number(s.id) === Number(purchase.supplier)) ||
       (purchase.supplier_details
         ? { id: purchase.supplier, ...purchase.supplier_details }
         : null);
@@ -386,7 +387,9 @@ const EditPurchase = () => {
       total_amount: purchase.total_amount || "0.00",
       received_amount: purchase.received_amount || "0.00",
       payment_account:
-        accounts.find((a) => a.id === purchase.payment_account) || null,
+        accounts.find(
+          (a) => Number(a.id) === Number(purchase.payment_account)
+        ) || null,
     };
 
     let nextPurchaseItems = [{ ...INITIAL_ITEM }];
@@ -443,6 +446,7 @@ const EditPurchase = () => {
     products,
     suppliers,
     accountsData,
+    accountsLoading,
     calculateItemTotal,
   ]);
 
@@ -581,7 +585,9 @@ const EditPurchase = () => {
                 ...item,
                 product: newValue,
                 quantity: "",
+                buy_price: "",
                 total: "0.00",
+                isComplete: false,
               }
             : item
         )
@@ -589,7 +595,10 @@ const EditPurchase = () => {
 
       if (newValue) {
         addMessage(
-          t("purchase.productSelected", `Product "${newValue.name}" selected`),
+          t("purchase.productSelected", {
+            defaultValue: `Product "${newValue.name}" selected`,
+            name: newValue.name,
+          }),
           "success"
         );
       }
@@ -661,7 +670,7 @@ const EditPurchase = () => {
       console.error("Error submitting purchase:", err);
       addMessage(t("purchase.updateError", "Error updating purchase"), "error");
     }
-  }, [formData, completedItems, addMessage, t, handleUpdate, id]);
+  }, [formData, completedItems, totalAmount, addMessage, t, handleUpdate, id]);
 
   const handleSupplierSubmit = useCallback(async () => {
     if (!supplierForm.name.trim() || !supplierForm.contact.trim()) {

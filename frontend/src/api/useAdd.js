@@ -111,6 +111,8 @@ const useAdd = (
   return {
     handleAdd,
     success,
+    isSuccess: success,
+    error: addMutation.error,
     loading,
     responseData,
   };

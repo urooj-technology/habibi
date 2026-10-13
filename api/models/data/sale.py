@@ -40,12 +40,18 @@ class Sale(DataRoot):
         related_name="sales_cash_bank",
         help_text="Cash/bank account for amounts received at sale time.",
     )
+    notes = models.TextField(blank=True, default="")
 
     def __str__(self):
         return f"Sale #{self.pk}"
 
     def save(self, *args, **kwargs):
-        self.is_paid = self.received_amount == self.total_amount
+        total = self.total_amount
+        received = self.received_amount
+        if total is None or received is None:
+            self.is_paid = False
+        else:
+            self.is_paid = Decimal(str(received)) >= Decimal(str(total))
         super().save(*args, **kwargs)
 
 

@@ -464,7 +464,9 @@ const AddPurchase = () => {
                 ...item,
                 product: newValue,
                 quantity: "",
+                buy_price: "",
                 total: "0.00",
+                isComplete: false,
               }
             : item
         )
@@ -472,7 +474,10 @@ const AddPurchase = () => {
 
       if (newValue) {
         addMessage(
-          t("purchase.productSelected", `Product "${newValue.name}" selected`),
+          t("purchase.productSelected", {
+            defaultValue: `Product "${newValue.name}" selected`,
+            name: newValue.name,
+          }),
           "success"
         );
       }
@@ -545,7 +550,7 @@ const AddPurchase = () => {
       console.error("Error submitting purchase:", err);
       addMessage(t("purchase.addError", "Error adding purchase"), "error");
     }
-  }, [formSubmitted, formData, completedItems, addMessage, t, handleAdd]);
+  }, [formData, completedItems, totalAmount, addMessage, t, handleAdd]);
 
   const handleSupplierSubmit = useCallback(async () => {
     if (!supplierForm.name.trim() || !supplierForm.contact.trim()) {

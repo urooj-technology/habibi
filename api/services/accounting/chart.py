@@ -80,9 +80,18 @@ def opening_balance_equity_account(*, currency: str = None) -> AccountingAccount
 
 
 def resolve_cash_bank_account(account_id, *, currency: str = None) -> AccountingAccount | None:
+    """
+    Resolve a cash/bank GL account for operational receipts/payments.
+    Only accepts active CASH/BANK roles — no silent fallback to code 1000
+    when an invalid account id is supplied.
+    """
     ensure_default_chart()
     if account_id:
         acc = AccountingAccount.objects.filter(pk=account_id, is_active=True).first()
-        if acc:
+        if acc and acc.role in (
+            AccountingAccount.Role.CASH,
+            AccountingAccount.Role.BANK,
+        ):
             return acc
-    return AccountingAccount.objects.filter(code="1000", is_active=True).first()
+        return None
+    return None

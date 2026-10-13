@@ -8,6 +8,7 @@ from django.utils import timezone
 from api.models.accounting.account import AccountingAccount
 from api.models.accounting.journal import JournalEntry, JournalLine
 from api.services.accounting.chart import account_by_code, resolve_cash_bank_account
+from api.services.accounting.period_lock import assert_period_open
 from api.shop_config import (
     AP_ACCOUNT_CODE,
     AR_ACCOUNT_CODE,
@@ -15,6 +16,14 @@ from api.shop_config import (
     INVENTORY_ACCOUNT_CODE,
     SALES_ACCOUNT_CODE,
 )
+
+
+def _assert_source_periods_open(source_type: str, source_id: int) -> None:
+    """Refuse to rewrite/delete journals that fall in a locked period."""
+    for entry_date in JournalEntry.objects.filter(
+        source_type=source_type, source_id=source_id
+    ).values_list("entry_date", flat=True):
+        assert_period_open(entry_date)
 
 
 def _delete_source(source_type: str, source_id: int) -> None:
@@ -60,11 +69,14 @@ def _sale_item_cost(item) -> Decimal:
 
 @transaction.atomic
 def sync_sale(sale) -> None:
-    _delete_source(JournalEntry.SourceType.SALE, sale.pk)
+    source = JournalEntry.SourceType.SALE
+    _assert_source_periods_open(source, sale.pk)
     if getattr(sale, "is_deleted", False):
+        _delete_source(source, sale.pk)
         return
     total = sale.total_amount or Decimal("0")
     if total <= 0:
+        _delete_source(source, sale.pk)
         return
 
     rev_amt = Decimal(total).quantize(Decimal("0.01"))
@@ -75,6 +87,8 @@ def sync_sale(sale) -> None:
     sales_acc = account_by_code(SALES_ACCOUNT_CODE)
     ar_acc = account_by_code(AR_ACCOUNT_CODE)
     entry_date = (sale.sale_date or timezone.now()).date()
+    assert_period_open(entry_date)
+    _delete_source(source, sale.pk)
     entry = JournalEntry.objects.create(
         reference=f"SALE-{sale.pk}",
         memo=f"Sale invoice #{sale.pk}",
@@ -116,11 +130,14 @@ def sync_sale(sale) -> None:
 
 @transaction.atomic
 def sync_sale_return(sale_return) -> None:
-    _delete_source(JournalEntry.SourceType.SALE_RETURN, sale_return.pk)
+    source = JournalEntry.SourceType.SALE_RETURN
+    _assert_source_periods_open(source, sale_return.pk)
     if getattr(sale_return, "is_deleted", False):
+        _delete_source(source, sale_return.pk)
         return
     total = sale_return.total_amount or Decimal("0")
     if total <= 0:
+        _delete_source(source, sale_return.pk)
         return
 
     rev_amt = Decimal(total).quantize(Decimal("0.01"))
@@ -131,6 +148,8 @@ def sync_sale_return(sale_return) -> None:
     sales_acc = account_by_code(SALES_ACCOUNT_CODE)
     ar_acc = account_by_code(AR_ACCOUNT_CODE)
     entry_date = (sale_return.return_date or timezone.now()).date()
+    assert_period_open(entry_date)
+    _delete_source(source, sale_return.pk)
     entry = JournalEntry.objects.create(
         reference=f"SALE-RET-{sale_return.pk}",
         memo=f"Sales return #{sale_return.pk} (Sale #{sale_return.sale_id})",
@@ -173,11 +192,14 @@ def sync_sale_return(sale_return) -> None:
 
 @transaction.atomic
 def sync_purchase(purchase) -> None:
-    _delete_source(JournalEntry.SourceType.PURCHASE, purchase.pk)
+    source = JournalEntry.SourceType.PURCHASE
+    _assert_source_periods_open(source, purchase.pk)
     if getattr(purchase, "is_deleted", False):
+        _delete_source(source, purchase.pk)
         return
     total = purchase.total_amount or Decimal("0")
     if total <= 0:
+        _delete_source(source, purchase.pk)
         return
 
     doc_amt = Decimal(total).quantize(Decimal("0.01"))
@@ -188,6 +210,8 @@ def sync_purchase(purchase) -> None:
     inv_acc = account_by_code(INVENTORY_ACCOUNT_CODE)
     ap_acc = account_by_code(AP_ACCOUNT_CODE)
     entry_date = purchase.purchase_date or timezone.now().date()
+    assert_period_open(entry_date)
+    _delete_source(source, purchase.pk)
     entry = JournalEntry.objects.create(
         reference=f"PUR-{purchase.pk}",
         memo=f"Purchase #{purchase.pk}",
@@ -228,6 +252,7 @@ def create_manual_journal(
     from api.models.data.customer import Customer
     from api.models.data.supplier import Supplier
 
+    assert_period_open(entry_date)
     entry = JournalEntry.objects.create(
         reference=reference or "",
         memo=memo or "",
@@ -283,6 +308,9 @@ def update_manual_journal(
 
     if entry.source_type != JournalEntry.SourceType.MANUAL:
         raise ValueError("Only MANUAL journal entries can be updated.")
+
+    assert_period_open(entry.entry_date)
+    assert_period_open(entry_date)
 
     entry.entry_date = entry_date
     entry.reference = reference or ""
