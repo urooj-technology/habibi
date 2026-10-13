@@ -227,6 +227,9 @@
     color: hsl(var(--sidebar-primary)) !important;
     box-shadow: inset 3px 0 0 hsl(var(--sidebar-primary));
   }
+  [dir="rtl"] [data-sidebar="menu-button"][data-active="true"] {
+    box-shadow: inset -3px 0 0 hsl(var(--sidebar-primary));
+  }
   .group[data-collapsible="icon"] [data-sidebar="menu-button"] {
     width: 2rem !important;
     max-width: 2rem !important;

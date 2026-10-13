@@ -182,12 +182,16 @@ const Sidebar = React.forwardRef(
     }
 
     // Desktop: flush sidebar beside main content (no outer gap).
+    // With document dir=rtl, flex-start is on the right — compensate so
+    // side="right" stays visually on the right and side="left" on the left.
     return (
       <aside
         ref={ref}
         className={cn(
           "group peer z-20 hidden h-full min-h-0 shrink-0 grow-0 flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-in-out md:flex",
-          side === "right" ? "order-last border-l" : "border-r",
+          side === "right"
+            ? "order-last border-l rtl:order-first"
+            : "border-r rtl:order-last",
           className
         )}
         style={{ width: desktopWidth, minWidth: desktopWidth, maxWidth: desktopWidth }}
@@ -350,7 +354,7 @@ const SidebarMenuItem = React.forwardRef(({ className, ...props }, ref) => (
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex min-w-0 items-center gap-2 overflow-hidden rounded-md px-2.5 py-2 text-left text-sm outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:!mx-auto group-data-[collapsible=icon]:justify-center [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>svg:last-child]:hidden",
+  "peer/menu-button flex min-w-0 items-center gap-2 overflow-hidden rounded-md px-2.5 py-2 text-start text-sm outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pe-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:!mx-auto group-data-[collapsible=icon]:justify-center [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>svg:last-child]:hidden",
   {
     variants: {
       variant: {
@@ -410,7 +414,11 @@ const SidebarMenuButton = React.forwardRef(
       <Tooltip>
         <TooltipTrigger asChild>{button}</TooltipTrigger>
         <TooltipContent
-          side="right"
+          side={
+            typeof document !== "undefined" && document.documentElement.dir === "rtl"
+              ? "left"
+              : "right"
+          }
           align="center"
           hidden={state !== "collapsed" || isMobile}
           {...tooltip}
