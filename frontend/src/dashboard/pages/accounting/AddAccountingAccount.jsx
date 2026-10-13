@@ -11,12 +11,7 @@ import PageHeader from "../../../components/PageHeader";
 import { FormTextField, FormSelectField } from "../../../components/FormFields";
 import { InlineAlert } from "../../../components/AlertMessage";
 import { FormShell, FormBody, FormGrid, FormSection, FormRow } from "../../../components/FormShell";
-import {
-  ACCOUNT_TYPES,
-  ROLE_OPTIONS,
-  CATEGORY_OPTIONS,
-  CATEGORIES_BY_TYPE,
-} from "./accountFormOptions";
+import { ACCOUNT_TYPES, ROLE_OPTIONS } from "./accountFormOptions";
 
 const AddAccountingAccount = () => {
   const { t } = useTranslation();
@@ -44,7 +39,6 @@ const AddAccountingAccount = () => {
     name: "",
     currency: "AFN",
     account_type: "ASSET",
-    category: "",
     role: "",
     parent: null,
     is_active: true,
@@ -66,7 +60,6 @@ const AddAccountingAccount = () => {
       name: formData.name.trim(),
       currency: "AFN",
       account_type: formData.account_type,
-      category: formData.category || "",
       role: formData.role || "",
       parent: formData.parent,
       is_active: formData.is_active,
@@ -95,15 +88,6 @@ const AddAccountingAccount = () => {
     handleAdd(addAccountPayload);
   }, [validate, handleAdd, addAccountPayload]);
 
-  const onAccountTypeChange = (value) => {
-    setFormData((p) => {
-      const allowed = CATEGORIES_BY_TYPE[value] || [];
-      const nextCategory =
-        p.category && allowed.includes(p.category) ? p.category : "";
-      return { ...p, account_type: value, category: nextCategory };
-    });
-  };
-
   const errors = showErrors ? validate() : [];
   const parentSelectOptions = [
     { value: "", label: "common.none" },
@@ -113,11 +97,6 @@ const AddAccountingAccount = () => {
       customLabel: `${acc.code} - ${acc.name}`,
     })),
   ];
-
-  const suggested = CATEGORIES_BY_TYPE[formData.account_type] || [];
-  const categorySelectOptions = CATEGORY_OPTIONS.filter(
-    (c) => !c.value || suggested.includes(c.value)
-  );
 
   return (
     <FormShell>
@@ -195,21 +174,12 @@ const AddAccountingAccount = () => {
                 name="account_type"
                 label="accounting.accountType"
                 value={formData.account_type}
-                onChange={(e) => onAccountTypeChange(e.target.value)}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, account_type: e.target.value }))
+                }
                 options={ACCOUNT_TYPES}
                 required
               />
-              <FormSelectField
-                name="category"
-                label="accounting.category"
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, category: e.target.value }))
-                }
-                options={categorySelectOptions}
-              />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="role"
                 label="accounting.role"
@@ -217,6 +187,8 @@ const AddAccountingAccount = () => {
                 onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
                 options={ROLE_OPTIONS}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="parent"
                 label="accounting.parent"
@@ -227,8 +199,6 @@ const AddAccountingAccount = () => {
                 }}
                 options={parentSelectOptions}
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="is_active"
                 label="common.status"

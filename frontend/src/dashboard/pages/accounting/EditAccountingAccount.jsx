@@ -14,12 +14,7 @@ import { FormTextField, FormSelectField } from "../../../components/FormFields";
 import { InlineAlert } from "../../../components/AlertMessage";
 import { FullPageLoader } from "../../../components/LoadingScreen";
 import { FormShell, FormBody, FormGrid, FormSection, FormRow } from "../../../components/FormShell";
-import {
-  ACCOUNT_TYPES,
-  ROLE_OPTIONS,
-  CATEGORY_OPTIONS,
-  CATEGORIES_BY_TYPE,
-} from "./accountFormOptions";
+import { ACCOUNT_TYPES, ROLE_OPTIONS } from "./accountFormOptions";
 
 const EditAccountingAccount = () => {
   const { t } = useTranslation();
@@ -55,7 +50,6 @@ const EditAccountingAccount = () => {
     name: "",
     currency: "AFN",
     account_type: "ASSET",
-    category: "",
     role: "",
     parent: null,
     is_active: true,
@@ -70,7 +64,6 @@ const EditAccountingAccount = () => {
       name: account.name || "",
       currency: account.currency || "AFN",
       account_type: account.account_type || "ASSET",
-      category: account.category || "",
       role: account.role || "",
       parent: account.parent ?? null,
       is_active: account.is_active ?? true,
@@ -94,7 +87,6 @@ const EditAccountingAccount = () => {
       name: formData.name.trim(),
       currency: "AFN",
       account_type: formData.account_type,
-      category: formData.category || "",
       role: formData.role || "",
       parent: formData.parent,
       is_active: formData.is_active,
@@ -123,15 +115,6 @@ const EditAccountingAccount = () => {
     handleUpdate(id, payload);
   }, [validate, handleUpdate, id, payload]);
 
-  const onAccountTypeChange = (value) => {
-    setFormData((p) => {
-      const allowed = CATEGORIES_BY_TYPE[value] || [];
-      const nextCategory =
-        p.category && allowed.includes(p.category) ? p.category : "";
-      return { ...p, account_type: value, category: nextCategory };
-    });
-  };
-
   const errors = showErrors ? validate() : [];
   const parentSelectOptions = [
     { value: "", label: "common.none" },
@@ -143,22 +126,6 @@ const EditAccountingAccount = () => {
         customLabel: `${acc.code} - ${acc.name}`,
       })),
   ];
-
-  const suggested = CATEGORIES_BY_TYPE[formData.account_type] || [];
-  const categorySelectOptions = useMemo(() => {
-    const filtered = CATEGORY_OPTIONS.filter(
-      (c) => !c.value || suggested.includes(c.value)
-    );
-    // Keep current category visible even if it doesn't match type (legacy data).
-    if (
-      formData.category &&
-      !filtered.some((c) => c.value === formData.category)
-    ) {
-      const orphan = CATEGORY_OPTIONS.find((c) => c.value === formData.category);
-      if (orphan) return [orphan, ...filtered];
-    }
-    return filtered;
-  }, [formData.category, suggested]);
 
   if (isLoading) return <FullPageLoader />;
 
@@ -256,21 +223,12 @@ const EditAccountingAccount = () => {
                 name="account_type"
                 label="accounting.accountType"
                 value={formData.account_type}
-                onChange={(e) => onAccountTypeChange(e.target.value)}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, account_type: e.target.value }))
+                }
                 options={ACCOUNT_TYPES}
                 required
               />
-              <FormSelectField
-                name="category"
-                label="accounting.category"
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, category: e.target.value }))
-                }
-                options={categorySelectOptions}
-              />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="role"
                 label="accounting.role"
@@ -278,6 +236,8 @@ const EditAccountingAccount = () => {
                 onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value }))}
                 options={ROLE_OPTIONS}
               />
+            </FormRow>
+            <FormRow cols={2}>
               <FormSelectField
                 name="parent"
                 label="accounting.parent"
@@ -292,8 +252,6 @@ const EditAccountingAccount = () => {
                 options={parentSelectOptions}
                 disabled={parentLoading}
               />
-            </FormRow>
-            <FormRow cols={2}>
               <FormSelectField
                 name="is_active"
                 label="common.status"

@@ -31,7 +31,6 @@ class AccountingAccountSerializer(serializers.ModelSerializer):
             "name",
             "currency",
             "account_type",
-            "category",
             "role",
             "parent",
             "is_active",

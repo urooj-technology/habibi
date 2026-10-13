@@ -33,14 +33,8 @@ import {
   FilterField,
   FilterSearch,
 } from "../../../components/ListPage";
-import { CATEGORY_OPTIONS } from "./accountFormOptions";
 import MoneyAmount from "../../../components/accounting/MoneyAmount";
 import { MONEY_SIDE } from "../../../utils/moneySide";
-
-const categoryLabelKey = (value) => {
-  const opt = CATEGORY_OPTIONS.find((c) => c.value === value);
-  return opt?.label || "";
-};
 
 function rowDisplayAmounts(row) {
   return {
@@ -181,20 +175,6 @@ const AccountsIndex = () => {
             {value || "—"}
           </Badge>
         ),
-      },
-      {
-        id: "category",
-        label: t("accounting.category", "Category"),
-        sortable: true,
-        minWidth: 140,
-        format: (value) => {
-          const key = categoryLabelKey(value);
-          return (
-            <span className="text-sm text-muted-foreground">
-              {key ? t(key, value) : "—"}
-            </span>
-          );
-        },
       },
       {
         id: "role",

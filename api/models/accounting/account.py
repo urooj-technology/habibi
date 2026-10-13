@@ -1,8 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from api.choices import AccountCategory
-
 
 class AccountingAccount(models.Model):
     """
@@ -42,13 +40,6 @@ class AccountingAccount(models.Model):
     )
     account_type = models.CharField(
         max_length=20, choices=AccountType.choices, db_index=True
-    )
-    category = models.CharField(
-        max_length=32,
-        choices=AccountCategory.choices,
-        blank=True,
-        default="",
-        db_index=True,
     )
     role = models.CharField(
         max_length=32,
