@@ -145,10 +145,11 @@ const EditSales = () => {
   } = useFetchObject(["sale", id], "sales", id, token);
 
   // API hooks
+  // No redirect here — clear draft first in the success effect, then navigate.
   const { handleUpdate, loading, success } = useUpdate(
     "sales",
     token,
-    "/app/sales",
+    null,
     t("sales.updateSuccess"),
     t("sales.updateError")
   );
@@ -369,7 +370,9 @@ const EditSales = () => {
       /* ignore */
     }
     addMessage(t("sales.updateSuccess"), "success");
-  }, [success, t, clearDraft]);
+    const timer = window.setTimeout(() => navigate("/app/sales"), 300);
+    return () => window.clearTimeout(timer);
+  }, [success, t, clearDraft, navigate]);
 
   // Handlers
   const updateItemField = useCallback((id, field, value) => {

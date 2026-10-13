@@ -37,11 +37,21 @@ export default function useFormDraft({
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const readyRef = useRef(false);
   const skipNextSaveRef = useRef(false);
+  const suppressSaveRef = useRef(false);
+  const saveTimerRef = useRef(null);
   const dataRef = useRef(data);
   dataRef.current = data;
 
   const clearDraft = useCallback(() => {
     if (!key) return;
+    // Stop pending/future autosaves so a debounced write cannot recreate the draft
+    // after a successful submit (or before navigate unmounts this form).
+    suppressSaveRef.current = true;
+    readyRef.current = false;
+    if (saveTimerRef.current != null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     try {
       localStorage.removeItem(storageKey(key));
     } catch {
@@ -85,6 +95,7 @@ export default function useFormDraft({
       return undefined;
     }
 
+    suppressSaveRef.current = false;
     readyRef.current = false;
     let cancelled = false;
 
@@ -106,29 +117,45 @@ export default function useFormDraft({
 
     // Allow autosave after a tick so restore can apply first without racing.
     const t = window.setTimeout(() => {
-      if (!cancelled) readyRef.current = true;
+      if (!cancelled && !suppressSaveRef.current) readyRef.current = true;
     }, 50);
 
     return () => {
       cancelled = true;
       window.clearTimeout(t);
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
     };
   }, [key, enabled, isMeaningful]);
 
   // Debounced autosave whenever data changes.
   useEffect(() => {
-    if (!key || !enabled || !readyRef.current) return undefined;
+    if (!key || !enabled || !readyRef.current || suppressSaveRef.current) {
+      return undefined;
+    }
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
       return undefined;
     }
     if (prompt) return undefined; // wait until user restores or discards
 
-    const timer = window.setTimeout(() => {
+    if (saveTimerRef.current != null) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      if (suppressSaveRef.current) return;
       writeDraft(dataRef.current);
     }, debounceMs);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
   }, [key, enabled, data, debounceMs, writeDraft, prompt]);
 
   // Warn on tab close / refresh if there is meaningful unsaved content.
@@ -158,6 +185,8 @@ export default function useFormDraft({
 
   const discardDraft = useCallback(() => {
     clearDraft();
+    // User discarded and continues editing — allow new autosaves.
+    suppressSaveRef.current = false;
     readyRef.current = true;
   }, [clearDraft]);
 

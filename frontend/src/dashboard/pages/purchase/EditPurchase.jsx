@@ -237,10 +237,11 @@ const EditPurchase = () => {
     isLoading: fetchLoading,
   } = useFetchObject(["purchase", id], "purchases", id, token);
 
+  // No redirect here — clear draft first in the success effect, then navigate.
   const { handleUpdate, loading, success } = useUpdate(
     "purchases",
     token,
-    "/app/purchases",
+    null,
     t("purchase.updateSuccess") || "Purchase updated successfully",
     t("purchase.updateError") || "Error updating purchase"
   );
@@ -504,7 +505,9 @@ const EditPurchase = () => {
       t("purchase.updateSuccess") || "Purchase updated successfully",
       "success"
     );
-  }, [success, addMessage, t, clearDraft]);
+    const timer = window.setTimeout(() => navigate("/app/purchases"), 300);
+    return () => window.clearTimeout(timer);
+  }, [success, addMessage, t, clearDraft, navigate]);
 
 
   // Handlers

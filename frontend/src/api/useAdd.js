@@ -61,19 +61,16 @@ const useAdd = (
       setSuccess(true);
       console.log("Mutation successful:", data);
 
-      // Reset the form after a short delay
-      setTimeout(() => {
-        setSuccess(false);
-      }, 100);
-
       // Invalidate the query to refresh the data if not login
       if (queryKey !== "login") {
         queryClient.invalidateQueries(queryKey);
       }
-      
-      // Redirect if path is provided
+
+      // Defer navigate so page effects (e.g. clearDraft) can run first.
       if (redirectPath) {
-        navigate(redirectPath);
+        window.setTimeout(() => {
+          navigate(redirectPath);
+        }, 0);
       }
     },
     onError: (error) => {
@@ -111,7 +108,9 @@ const useAdd = (
   return {
     handleAdd,
     success,
-    isSuccess: success,
+    // Prefer React Query flag — stays true after success (local `success` alone
+    // was easy to miss when navigate unmounted before effects ran).
+    isSuccess: addMutation.isSuccess || success,
     error: addMutation.error,
     loading,
     responseData,

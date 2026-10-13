@@ -238,10 +238,11 @@ const AddPurchase = () => {
     t("product.addError") || "Error adding product"
   );
 
+  // No redirect here — clear draft first in the success effect, then navigate.
   const { handleAdd, loading, isSuccess, error } = useAdd(
     "purchases",
     token,
-    "/app/purchases",
+    null,
     t("purchase.addSuccess") || "Purchase added successfully",
     t("purchase.addError") || "Error adding purchase"
   );

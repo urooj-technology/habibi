@@ -47,8 +47,11 @@ const useUpdate = (queryKey, token, redirectPath, successMessage, errorMessage) 
         }
       );
       queryClient.invalidateQueries(queryKey);
+      // Defer navigate so page effects (e.g. clearDraft) can run first.
       if (redirectPath) {
-        navigate(redirectPath);
+        window.setTimeout(() => {
+          navigate(redirectPath);
+        }, 0);
       }
     },
     onError: (error) => {

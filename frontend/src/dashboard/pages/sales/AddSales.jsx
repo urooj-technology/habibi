@@ -148,10 +148,11 @@ const AddSales = () => {
   }, [accountsData]);
 
   // API hooks
+  // No redirect here — clear draft first in the success effect, then navigate.
   const { handleAdd, loading, isSuccess, error } = useAdd(
     "sales",
     token,
-    "/app/sales",
+    null,
     t("sales.addSuccess"),
     t("sales.addError")
   );
