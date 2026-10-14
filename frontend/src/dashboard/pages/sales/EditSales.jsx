@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import {
   ShoppingCart,
   X,
-  Plus,
   Trash2,
   UserPlus,
   Loader2,
@@ -42,6 +41,12 @@ import {
   posControlClass,
 } from "@/components/pos/PosShell";
 import SearchableSelect from "@/components/SearchableSelect";
+import ItemEntryBar, {
+  PosItemsEmpty,
+  PosProductCell,
+  flashLineClass,
+  useItemLineReveal,
+} from "@/components/pos/ItemEntryBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,12 +87,9 @@ const InlineMessage = ({ message, severity, onClose }) => {
   );
 };
 
-const initialItemState = {
-  id: Date.now(),
-  inventory: null,
-  quantity: "",
-  sale_price: "",
-};
+const newLineId = () => Date.now() + Math.random();
+const getInventoryName = (inv) => inv?.product_details?.name || "";
+const getInventoryBarcode = (inv) => inv?.product_details?.barcode || "";
 
 const EditSales = () => {
   const { t } = useTranslation();
@@ -108,7 +110,7 @@ const EditSales = () => {
     notes: "",
   });
 
-  const [saleItems, setSaleItems] = useState([{ ...initialItemState }]);
+  const [saleItems, setSaleItems] = useState([]);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -195,16 +197,21 @@ const EditSales = () => {
     return current + restored;
   }, []);
 
-  const getAvailableProducts = useCallback(
-    (currentItemId) => {
-      return inventory.filter(
-        (inv) =>
-          !saleItems.some(
-            (item) => item.id !== currentItemId && item.inventory?.id === inv.id
-          )
-      );
-    },
-    [inventory, saleItems]
+  const originalQtyByInventory = useMemo(() => {
+    const map = new Map();
+    (saleData?.sale_items || []).forEach((orig) => {
+      const invId = Number(orig?.inventory?.id ?? orig?.inventory);
+      map.set(invId, (map.get(invId) || 0) + (Number.parseFloat(orig.quantity ?? 0) || 0));
+    });
+    return map;
+  }, [saleData]);
+
+  /** Stock usable by this sale: current stock plus what this sale already took. */
+  const getSellableStock = useCallback(
+    (inv) =>
+      (Number.parseFloat(inv?.quantity || 0) || 0) +
+      (originalQtyByInventory.get(Number(inv?.id)) || 0),
+    [originalQtyByInventory]
   );
 
   const calculateItemTotal = useCallback((item) => {
@@ -267,7 +274,7 @@ const EditSales = () => {
       notes: saleData.notes || "",
     };
 
-    let nextSaleItems = [{ ...initialItemState }];
+    let nextSaleItems = [];
     if (saleData.sale_items?.length) {
       nextSaleItems = saleData.sale_items.map((item) => {
         const fromList = inventory.find((inv) => inv.id === item.inventory);
@@ -343,8 +350,8 @@ const EditSales = () => {
 
   const onRestoreDraft = useCallback((payload) => {
     if (payload?.formValues) setFormValues(payload.formValues);
-    if (Array.isArray(payload?.saleItems) && payload.saleItems.length > 0) {
-      setSaleItems(payload.saleItems);
+    if (Array.isArray(payload?.saleItems)) {
+      setSaleItems(payload.saleItems.filter((item) => item.inventory));
     }
   }, []);
 
@@ -381,60 +388,77 @@ const EditSales = () => {
     );
   }, []);
 
-  const handleInventoryChange = useCallback(
-    (id, newValue) => {
-      if (newValue) {
-        const isAlreadySelected = saleItems.some(
-          (item) => item.id !== id && item.inventory?.id === newValue.id
-        );
+  const entryBarRef = useRef(null);
+  const saleItemFieldsRef = useRef(null);
+  const { flashId, revealLine } = useItemLineReveal(saleItemFieldsRef);
 
-        if (isAlreadySelected) {
-          addMessage(t("sales.messages.productAlreadyInOtherLine"), "warning");
-          return;
+  const pickInventory = useCallback(
+    (inv, { source }) => {
+      const name = inv.product_details?.name || "";
+      const existing = saleItems.find((item) => item.inventory?.id === inv.id);
+
+      if (existing) {
+        const available = getStockAvailable(existing);
+        const nextQty = (Number.parseFloat(existing.quantity) || 0) + 1;
+        if (nextQty > available) {
+          revealLine(existing.id, source === "search" ? "quantity" : null);
+          return {
+            ok: false,
+            tone: "warning",
+            message: t("itemEntry.stockLimit", { available, name }),
+          };
         }
-
-        let initialSalePrice = "";
-        if (newValue?.sell_price) {
-          initialSalePrice = Number.parseFloat(newValue.sell_price).toString();
-        }
-
-        updateItemField(id, "inventory", newValue);
-        updateItemField(id, "sale_price", initialSalePrice);
-        updateItemField(id, "quantity", "");
-
-        addMessage(
-          t("sales.messages.productSelected", {
-            name: newValue.product_details?.name || "",
-          }),
-          "success"
-        );
-      } else {
-        updateItemField(id, "inventory", null);
-        updateItemField(id, "sale_price", "");
-        updateItemField(id, "quantity", "");
+        updateItemField(existing.id, "quantity", String(nextQty));
+        revealLine(existing.id, source === "search" ? "quantity" : null);
+        return { ok: true, tone: "info", message: t("itemEntry.increased", { name }) };
       }
+
+      // Re-adding a product that was removed from this sale reuses its original line.
+      const usedOriginalIds = new Set(
+        saleItems.map((item) => item.original_item?.id).filter(Boolean)
+      );
+      const original = (saleData?.sale_items || []).find(
+        (orig) =>
+          Number(orig?.inventory?.id ?? orig?.inventory) === Number(inv.id) &&
+          !usedOriginalIds.has(orig.id)
+      );
+      const available = getSellableStock(inv);
+      const line = {
+        id: newLineId(),
+        inventory: inv,
+        quantity: String(Math.min(1, available)),
+        sale_price: original?.sale_price != null
+          ? String(original.sale_price)
+          : inv?.sell_price
+            ? Number.parseFloat(inv.sell_price).toString()
+            : "",
+        ...(original ? { original_item: original } : {}),
+      };
+      setSaleItems((prev) => [...prev, line]);
+      revealLine(line.id, source === "search" ? "sale_price" : null);
+      return { ok: true, tone: "success", message: t("itemEntry.added", { name }) };
     },
-    [saleItems, updateItemField, t]
+    [saleItems, saleData, getStockAvailable, getSellableStock, updateItemField, revealLine, t]
   );
 
-  const addNewItem = useCallback(() => {
-    setSaleItems((prev) => [
-      ...prev,
-      { ...initialItemState, id: Date.now() + Math.random() },
-    ]);
-    addMessage(t("sales.messages.newItemAddedToSale"), "info");
-  }, [t]);
+  const focusEntryBar = useCallback(() => {
+    entryBarRef.current?.focusBarcode();
+    return true;
+  }, []);
 
-  const { containerRef: saleItemFieldsRef, onContainerKeyDownCapture } =
-    useEnterNavigatesItemFields({ onEnterOnLastField: addNewItem });
+  const { containerRef: enterNavRef, onContainerKeyDownCapture } =
+    useEnterNavigatesItemFields({ onEnterOnLastField: focusEntryBar });
+
+  const setItemsContainerRef = useCallback(
+    (node) => {
+      saleItemFieldsRef.current = node;
+      enterNavRef.current = node;
+    },
+    [enterNavRef]
+  );
 
   const removeItem = useCallback((id) => {
-    setSaleItems((prev) => {
-      const filtered = prev.filter((item) => item.id !== id);
-      return filtered.length === 0
-        ? [{ ...initialItemState, id: Date.now() }]
-        : filtered;
-    });
+    setSaleItems((prev) => prev.filter((item) => item.id !== id));
     addMessage(t("sales.messages.itemRemovedFromSale"), "warning");
   }, [t]);
 
@@ -582,30 +606,33 @@ const EditSales = () => {
       item.quantity && Number.parseFloat(item.quantity) > Number(avail);
 
     return (
-      <PosCartLine key={item.id} complete={isComplete}>
+      <PosCartLine
+        key={item.id}
+        data-line-id={item.id}
+        complete={isComplete}
+        className={cn(flashId === item.id && flashLineClass)}
+      >
         <PosItemRow columns={5}>
           <PosItemCell>
             <PosField label={t("sales.tableHeaders.product")}>
-              <SearchableSelect
-                options={getAvailableProducts(item.id)}
-                value={item.inventory}
-                onChange={(newValue) => handleInventoryChange(item.id, newValue)}
-                getOptionLabel={(option) =>
-                  option.product_details?.name || ""
+              <PosProductCell
+                name={item.inventory?.product_details?.name}
+                barcode={item.inventory?.product_details?.barcode}
+                extra={
+                  <span className={cn("tabular-nums", exceeds && "text-destructive")}>
+                    {t("itemEntry.stock")}: {avail}
+                  </span>
                 }
-                placeholder="sales.placeholders.selectProduct"
-                loading={inventoryLoading}
               />
             </PosField>
           </PosItemCell>
 
           <PosItemCell>
             <PosField
-              label={`${t("common.quantity", "Quantity")}${
-                item.inventory ? ` (${avail})` : ""
-              }`}
+              label={t("common.quantity", "Quantity")}
             >
               <Input
+                data-field="quantity"
                 type="number"
                 value={item.quantity}
                 onChange={(e) =>
@@ -627,6 +654,7 @@ const EditSales = () => {
           <PosItemCell>
             <PosField label={t("common.price", "Price")}>
               <Input
+                data-field="sale_price"
                 type="number"
                 value={item.sale_price}
                 onChange={(e) =>
@@ -654,19 +682,16 @@ const EditSales = () => {
           </PosItemCell>
 
           <PosItemCell className="flex items-end justify-center pb-0.5">
-            {saleItems.length > 1 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                onClick={() => removeItem(item.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            ) : (
-              <div className="h-8 w-8" />
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+              onClick={() => removeItem(item.id)}
+              aria-label={t("common.delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </PosItemCell>
         </PosItemRow>
       </PosCartLine>
@@ -912,26 +937,29 @@ const EditSales = () => {
 
           <PosItems
             title={t("sales.items", "Items")}
-            count={completedItems.length}
-            actions={
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={addNewItem}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("sales.addItem")}
-              </Button>
-            }
+            count={saleItems.length}
           >
+            <ItemEntryBar
+              ref={entryBarRef}
+              options={inventory}
+              loading={inventoryLoading}
+              getName={getInventoryName}
+              getBarcode={getInventoryBarcode}
+              renderMeta={(inv) => `${t("itemEntry.stock")}: ${getSellableStock(inv)}`}
+              getDisabledReason={(inv) =>
+                getSellableStock(inv) <= 0
+                  ? t("itemEntry.outOfStock", { name: inv.product_details?.name || "" })
+                  : null
+              }
+              isInList={(inv) => saleItems.some((item) => item.inventory?.id === inv.id)}
+              onPick={pickInventory}
+            />
             <div
-              ref={saleItemFieldsRef}
+              ref={setItemsContainerRef}
               onKeyDownCapture={onContainerKeyDownCapture}
               className="min-w-0"
             >
-              {saleItems.map(renderCartLine)}
+              {saleItems.length === 0 ? <PosItemsEmpty /> : saleItems.map(renderCartLine)}
             </div>
           </PosItems>
         </PosMain>

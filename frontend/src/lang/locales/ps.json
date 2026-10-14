@@ -1622,7 +1622,10 @@
     "deleteError": "د جنس په حذف کولو کې تېروتنه",
     "searchPlaceholder": "اجناس ولټوئ…",
     "noProducts": "هیڅ جنس موندل شوی نه دی",
-    "deleteConfirmation": "آیا تاسو ډاډه یاست چې دا جنس ړنګ کړئ؟"
+    "deleteConfirmation": "آیا تاسو ډاډه یاست چې دا جنس ړنګ کړئ؟",
+    "barcode": "بارکوډ",
+    "barcodeHint": "که خالي پرېښودل شي، بارکوډ په اتومات ډول جوړېږي",
+    "barcodePlaceholder": "بارکوډ سکن یا ولیکئ (اختیاري)"
   },
   "validation": {
     "required": "دا ساحه اړینه ده",
@@ -3269,5 +3272,23 @@
       "delete": "ړنګول",
       "manage": "اداره"
     }
+  },
+  "itemEntry": {
+    "barcode": "بارکوډ",
+    "barcodePlaceholder": "بارکوډ سکن یا ولیکئ، بیا Enter",
+    "productSearch": "د جنس نوم",
+    "productSearchPlaceholder": "جنس د نوم یا بارکوډ له مخې ولټوئ…",
+    "notFound": "د \"{{code}}\" بارکوډ سره جنس ونه موندل شو",
+    "outOfStock": "\"{{name}}\" په ګدام کې نشته",
+    "stockLimit": "یوازې {{available}} دانې \"{{name}}\" موجودې دي",
+    "added": "\"{{name}}\" اضافه شو",
+    "increased": "د \"{{name}}\" شمېر زیات شو",
+    "noResults": "هیڅ جنس ونه موندل شو",
+    "emptyTitle": "تر اوسه هیڅ توکی نشته",
+    "emptyHint": "بارکوډ سکن کړئ یا جنس د نوم له مخې ولټوئ ترڅو لیست ته اضافه شي.",
+    "stock": "موجودي",
+    "inList": "په لیست کې",
+    "product": "جنس",
+    "shortcuts": "F2 بارکوډ · F3 د جنس لټون"
   }
 }

@@ -129,6 +129,17 @@ const ProductIndex = () => {
     { id: "id", label: t("common.id"), sortable: true, minWidth: 70 },
     { id: "name", label: t("product.name"), sortable: true, minWidth: 180 },
     {
+      id: "barcode",
+      label: t("product.barcode"),
+      sortable: true,
+      minWidth: 150,
+      format: (value) => (
+        <span style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.04em" }}>
+          {value || "-"}
+        </span>
+      ),
+    },
+    {
       id: "category",
       label: t("product.category"),
       sortable: true,
@@ -219,12 +230,14 @@ const ProductIndex = () => {
       columns: [
         { id: "id", label: t("common.id", "ID"), align: "center" },
         { id: "name", label: t("product.name", "Name") },
+        { id: "barcode", label: t("product.barcode", "Barcode") },
         { id: "category", label: t("product.category", "Category") },
       ],
       rows: productsData || [],
       getCell: (row, col) => {
         if (col.id === "id") return `#${row.id}`;
         if (col.id === "name") return row.name || "—";
+        if (col.id === "barcode") return row.barcode || "—";
         if (col.id === "category") return row.category_details?.name || row.category_name || "—";
         return "—";
       },
@@ -303,6 +316,7 @@ const ProductIndex = () => {
 
     const infoItems = [
       { label: t("product.name"), value: selectedProduct.name },
+      { label: t("product.barcode"), value: selectedProduct.barcode || "-" },
       {
         label: t("common.status"),
         value: selectedProduct.is_deleted

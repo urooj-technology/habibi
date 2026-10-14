@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
  * Keyboard navigation for dense line-item forms (purchase/sale rows).
  * - Enter: move focus to the next input/select/textarea inside the container.
  * - On the last field in the items section: Enter runs `onEnterOnLastField` (e.g. add row),
- *   then focuses the first field of the new line (`[data-item-line]`).
+ *   then focuses the first field of the new line (`[data-item-line]`), unless the
+ *   callback returns `true` to signal it already moved focus itself.
  * - Shift+Enter: move to the previous field.
  * - When an MUI Autocomplete dropdown is open, Enter is left to the component
  *   so the user can pick an option.
@@ -56,7 +57,7 @@ export function useEnterNavigatesItemFields(options = {}) {
 
     const cb = onLastRef.current;
     if (typeof cb === "function") {
-      cb();
+      if (cb() === true) return;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           focusFirstInputInLastItemLine(root);

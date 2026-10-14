@@ -24,6 +24,7 @@ class InventoryViewSet(DataRootViewSet):
     filterset_fields = ["product"]
     search_fields = [
         "product__name",
+        "product__barcode",
     ]
     pagination_class = CustomPagination
 

@@ -13,7 +13,6 @@ import {
 import {
   Package,
   X,
-  Plus,
   Trash2,
   UserPlus,
   Loader2,
@@ -50,6 +49,12 @@ import {
   posControlClass,
 } from "@/components/pos/PosShell";
 import SearchableSelect from "@/components/SearchableSelect";
+import ItemEntryBar, {
+  PosItemsEmpty,
+  PosProductCell,
+  flashLineClass,
+  useItemLineReveal,
+} from "@/components/pos/ItemEntryBar";
 import {
   calculatePricedLineTotal,
   quantityPayload,
@@ -62,15 +67,9 @@ import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 
 // Constants
-const INITIAL_ITEM = {
-  id: Date.now(),
-  product: null,
-  quantity: "",
-  buy_price: "",
-  note: "",
-  total: "0.00",
-  isComplete: false,
-};
+const newLineId = () => Date.now() + Math.random();
+const getProductName = (product) => product?.name || "";
+const getProductBarcode = (product) => product?.barcode || "";
 
 const INITIAL_SUPPLIER_FORM = {
   name: "",
@@ -81,6 +80,7 @@ const INITIAL_SUPPLIER_FORM = {
 
 const INITIAL_PRODUCT_FORM = {
   name: "",
+  barcode: "",
   category: "",
   notes: "",
 };
@@ -163,7 +163,7 @@ const EditPurchase = () => {
     payment_account: null,
   });
 
-  const [purchaseItems, setPurchaseItems] = useState([{ ...INITIAL_ITEM }]);
+  const [purchaseItems, setPurchaseItems] = useState([]);
   const [errors, setErrors] = useState({});
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -187,6 +187,18 @@ const EditPurchase = () => {
     "products/",
     token
   );
+  const { data: inventory = [] } = useFetchObjects(
+    ["inventory"],
+    "inventory/",
+    token
+  );
+  const stockByProduct = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(inventory) ? inventory : inventory?.results || []).forEach((inv) => {
+      map.set(Number(inv.product), Number.parseFloat(inv.quantity || 0) || 0);
+    });
+    return map;
+  }, [inventory]);
   const { data: categories = [] } = useFetchObjects(
     ["categories"],
     "category/",
@@ -351,11 +363,17 @@ const EditPurchase = () => {
     }
   }, [supplierSuccess, newSupplierData, refetchSuppliers, addMessage, t]);
 
+  const pickProductRef = useRef(null);
+  const autoAddedProductRef = useRef(null);
   useEffect(() => {
     if (productSuccess && newProductData) {
       setProductDialogOpen(false);
       setProductForm({ ...INITIAL_PRODUCT_FORM });
       refetchProducts();
+      if (newProductData.id && autoAddedProductRef.current !== newProductData.id) {
+        autoAddedProductRef.current = newProductData.id;
+        pickProductRef.current?.(newProductData, { source: "search" });
+      }
       addMessage(
         t("product.addSuccess") || "Product added successfully",
         "success"
@@ -393,7 +411,7 @@ const EditPurchase = () => {
         ) || null,
     };
 
-    let nextPurchaseItems = [{ ...INITIAL_ITEM }];
+    let nextPurchaseItems = [];
     if (purchase.purchase_items?.length) {
       nextPurchaseItems = purchase.purchase_items.map((item) => {
         const fromList = products.find((p) => p.id === item.product);
@@ -475,8 +493,8 @@ const EditPurchase = () => {
         total_amount: prev.total_amount,
       }));
     }
-    if (Array.isArray(payload?.purchaseItems) && payload.purchaseItems.length > 0) {
-      setPurchaseItems(payload.purchaseItems);
+    if (Array.isArray(payload?.purchaseItems)) {
+      setPurchaseItems(payload.purchaseItems.filter((item) => item.product));
     }
   }, []);
 
@@ -543,71 +561,68 @@ const EditPurchase = () => {
     [calculateItemTotal]
   );
 
-  const addNewItem = useCallback(() => {
-    setPurchaseItems((prev) => [
-      ...prev,
-      { ...INITIAL_ITEM, id: Date.now() + Math.random() },
-    ]);
-    addMessage(
-      t("purchase.newItemAdded", "New item added to the purchase"),
-      "info"
-    );
-  }, [addMessage, t]);
+  const entryBarRef = useRef(null);
+  const purchaseItemsRef = useRef(null);
+  const { flashId, revealLine } = useItemLineReveal(purchaseItemsRef);
 
-  const { containerRef: purchaseItemFieldsRef, onContainerKeyDownCapture } =
-    useEnterNavigatesItemFields({ onEnterOnLastField: addNewItem });
+  const pickProduct = useCallback(
+    (product, { source }) => {
+      const name = product?.name || "";
+      const existing = purchaseItems.find((item) => item.product?.id === product.id);
+
+      if (existing) {
+        const nextQty = (Number.parseFloat(existing.quantity) || 0) + 1;
+        updateItem(existing.id, "quantity", String(nextQty));
+        revealLine(existing.id, source === "search" ? "quantity" : null);
+        return { ok: true, tone: "info", message: t("itemEntry.increased", { name }) };
+      }
+
+      const line = {
+        id: newLineId(),
+        product,
+        quantity: "1",
+        buy_price: "",
+        note: "",
+        total: "0.00",
+        isComplete: false,
+      };
+      setPurchaseItems((prev) => [...prev, line]);
+      revealLine(line.id, source === "search" ? "buy_price" : null);
+      return { ok: true, tone: "success", message: t("itemEntry.added", { name }) };
+    },
+    [purchaseItems, updateItem, revealLine, t]
+  );
+
+  pickProductRef.current = pickProduct;
+
+  const focusEntryBar = useCallback(() => {
+    entryBarRef.current?.focusBarcode();
+    return true;
+  }, []);
+
+  const { containerRef: enterNavRef, onContainerKeyDownCapture } =
+    useEnterNavigatesItemFields({ onEnterOnLastField: focusEntryBar });
+
+  const setItemsContainerRef = useCallback(
+    (node) => {
+      purchaseItemsRef.current = node;
+      enterNavRef.current = node;
+    },
+    [enterNavRef]
+  );
 
   const removeItem = useCallback(
     (id) => {
-      setPurchaseItems((prev) => {
-        const filtered = prev.filter((item) => item.id !== id);
-        const result =
-          filtered.length === 0
-            ? [{ ...INITIAL_ITEM, id: Date.now() }]
-            : filtered;
-
-        if (filtered.length > 0) {
-          addMessage(
-            t("purchase.itemRemoved", "Item removed from the purchase"),
-            "warning"
-          );
-        }
-
-        return result;
-      });
+      setPurchaseItems((prev) => prev.filter((item) => item.id !== id));
+      addMessage(t("purchase.itemRemoved", "Item removed from the purchase"), "warning");
     },
     [addMessage, t]
   );
 
-  const handleProductChange = useCallback(
-    (id, newValue) => {
-      setPurchaseItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                product: newValue,
-                quantity: "",
-                buy_price: "",
-                total: "0.00",
-                isComplete: false,
-              }
-            : item
-        )
-      );
-
-      if (newValue) {
-        addMessage(
-          t("purchase.productSelected", {
-            defaultValue: `Product "${newValue.name}" selected`,
-            name: newValue.name,
-          }),
-          "success"
-        );
-      }
-    },
-    [addMessage, t]
-  );
+  const openProductDialogForBarcode = useCallback((code) => {
+    setProductForm({ ...INITIAL_PRODUCT_FORM, barcode: code });
+    setProductDialogOpen(true);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setFormSubmitted(true);
@@ -705,8 +720,9 @@ const EditPurchase = () => {
     try {
       addMessage(t("common.saving", "Saving..."), "info");
       await handleAddProduct({
-        name: productForm.name,
+        name: productForm.name.trim(),
         category: productForm.category,
+        barcode: productForm.barcode.trim() || null,
       });
     } catch (error) {
       console.error("Error adding product:", error);
@@ -726,16 +742,25 @@ const EditPurchase = () => {
     const lineTotal = calculateItemTotal(item);
 
     return (
-      <PosCartLine key={item.id} complete={isComplete}>
+      <PosCartLine
+        key={item.id}
+        data-line-id={item.id}
+        complete={isComplete}
+        className={cn(flashId === item.id && flashLineClass)}
+      >
         <PosItemRow columns={5}>
           <PosItemCell>
             <PosField label={t("purchase.selectProduct", "Product")}>
-              <SearchableSelect
-                options={products ?? []}
-                value={item.product}
-                onChange={(newValue) => handleProductChange(item.id, newValue)}
-                getOptionLabel={(option) => option.name || ""}
-                placeholder="purchase.selectProduct"
+              <PosProductCell
+                name={item.product?.name}
+                barcode={item.product?.barcode}
+                extra={
+                  stockByProduct.has(Number(item.product?.id)) ? (
+                    <span className="tabular-nums">
+                      {t("itemEntry.stock")}: {stockByProduct.get(Number(item.product?.id))}
+                    </span>
+                  ) : null
+                }
               />
             </PosField>
           </PosItemCell>
@@ -743,6 +768,7 @@ const EditPurchase = () => {
           <PosItemCell>
             <PosField label={t("common.quantity", "Quantity")}>
               <Input
+                data-field="quantity"
                 type="number"
                 value={item.quantity}
                 onChange={(e) =>
@@ -759,6 +785,7 @@ const EditPurchase = () => {
           <PosItemCell>
             <PosField label={t("purchase.buyPrice", "Buy Price")}>
               <Input
+                data-field="buy_price"
                 type="number"
                 value={item.buy_price}
                 onChange={(e) =>
@@ -786,20 +813,16 @@ const EditPurchase = () => {
           </PosItemCell>
 
           <PosItemCell className="flex items-end justify-center pb-0.5">
-            {purchaseItems.length > 1 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                onClick={() => removeItem(item.id)}
-                aria-label={t("common.delete", "Delete")}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            ) : (
-              <div className="h-8 w-8" />
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+              onClick={() => removeItem(item.id)}
+              aria-label={t("common.delete", "Delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </PosItemCell>
         </PosItemRow>
       </PosCartLine>
@@ -1018,38 +1041,49 @@ const EditPurchase = () => {
 
           <PosItems
             title={t("purchase.purchaseItems", "Items")}
-            count={completedItems.length}
+            count={purchaseItems.length}
             actions={
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={() => setProductDialogOpen(true)}
-                >
-                  <Boxes className="h-3.5 w-3.5" />
-                  {t("purchase.addProduct", "Add Product")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={addNewItem}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  {t("purchase.addItem", "Add Item")}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setProductForm({ ...INITIAL_PRODUCT_FORM });
+                  setProductDialogOpen(true);
+                }}
+              >
+                <Boxes className="h-3.5 w-3.5" />
+                {t("purchase.addProduct", "Add Product")}
+              </Button>
             }
           >
+            <ItemEntryBar
+              ref={entryBarRef}
+              options={products ?? []}
+              getName={getProductName}
+              getBarcode={getProductBarcode}
+              renderMeta={(product) =>
+                stockByProduct.has(Number(product.id))
+                  ? `${t("itemEntry.stock")}: ${stockByProduct.get(Number(product.id))}`
+                  : null
+              }
+              isInList={(product) =>
+                purchaseItems.some((item) => item.product?.id === product.id)
+              }
+              onPick={pickProduct}
+              onBarcodeNotFound={openProductDialogForBarcode}
+            />
             <div
-              ref={purchaseItemFieldsRef}
+              ref={setItemsContainerRef}
               onKeyDownCapture={onContainerKeyDownCapture}
               className="min-w-0"
             >
-              {purchaseItems.map(renderCartLine)}
+              {purchaseItems.length === 0 ? (
+                <PosItemsEmpty />
+              ) : (
+                purchaseItems.map(renderCartLine)
+              )}
             </div>
           </PosItems>
         </PosMain>
@@ -1197,6 +1231,18 @@ const EditPurchase = () => {
                 value={productForm.name}
                 onChange={(e) =>
                   setProductForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label={t("product.barcode") || "Barcode"}
+                fullWidth
+                value={productForm.barcode}
+                placeholder={t("product.barcodePlaceholder")}
+                helperText={t("product.barcodeHint")}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, barcode: e.target.value }))
                 }
               />
             </Grid>

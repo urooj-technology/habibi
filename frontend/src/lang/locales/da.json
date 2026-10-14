@@ -1628,7 +1628,10 @@
     "deleteError": "خطا در حذف جنس",
     "searchPlaceholder": "جستجوی جنس‌ها...",
     "noProducts": "جنسی یافت نشد",
-    "deleteConfirmation": "آیا از حذف این جنس اطمینان دارید؟"
+    "deleteConfirmation": "آیا از حذف این جنس اطمینان دارید؟",
+    "barcode": "بارکد",
+    "barcodeHint": "اگر خالی بماند، بارکد به صورت خودکار ساخته می‌شود",
+    "barcodePlaceholder": "بارکد را اسکن یا وارد کنید (اختیاری)"
   },
   "validation": {
     "required": "این فیلد الزامی است",
@@ -3275,5 +3278,23 @@
       "delete": "حذف",
       "manage": "مدیریت"
     }
+  },
+  "itemEntry": {
+    "barcode": "بارکد",
+    "barcodePlaceholder": "بارکد را اسکن یا تایپ کنید، سپس Enter",
+    "productSearch": "نام جنس",
+    "productSearchPlaceholder": "جستجوی جنس با نام یا بارکد…",
+    "notFound": "جنسی با بارکد \"{{code}}\" پیدا نشد",
+    "outOfStock": "\"{{name}}\" در گدام موجود نیست",
+    "stockLimit": "فقط {{available}} عدد از \"{{name}}\" موجود است",
+    "added": "\"{{name}}\" اضافه شد",
+    "increased": "تعداد \"{{name}}\" افزایش یافت",
+    "noResults": "جنس مطابق پیدا نشد",
+    "emptyTitle": "هنوز موردی اضافه نشده",
+    "emptyHint": "بارکد را اسکن کنید یا جنس را با نام جستجو کنید تا به لیست اضافه شود.",
+    "stock": "موجودی",
+    "inList": "در لیست",
+    "product": "جنس",
+    "shortcuts": "F2 بارکد · F3 جستجوی جنس"
   }
 }

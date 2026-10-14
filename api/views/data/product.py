@@ -16,8 +16,8 @@ class ProductViewSet(DataRootViewSet):
     serializer_class = ProductSerializer
     permission_classes = [ModuleCRUDPermission("inventory")]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["name", "category"]
-    search_fields = ["name"]
+    filterset_fields = ["name", "category", "barcode"]
+    search_fields = ["name", "barcode"]
     pagination_class = CustomPagination
 
     def create(self, request, *args, **kwargs):
@@ -26,9 +26,7 @@ class ProductViewSet(DataRootViewSet):
         except IntegrityError:
             return Response(
                 {
-                    "name": [
-                        "A product with this name already exists. Choose a different name or edit the existing product."
-                    ]
+                    "detail": "A product with this name or barcode already exists."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

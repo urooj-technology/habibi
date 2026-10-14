@@ -261,9 +261,10 @@ export function PosTotalRow({
   );
 }
 
-export function PosCartLine({ complete, children, className }) {
+export function PosCartLine({ complete, children, className, ...rest }) {
   return (
     <div
+      {...rest}
       data-item-line
       className={cn(
         "min-w-0 border-b border-border px-3 py-2 transition-colors last:border-b-0 hover:bg-primary/[0.03]",

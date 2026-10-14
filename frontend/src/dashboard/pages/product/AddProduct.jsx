@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { Save, X, Package, Loader2 } from "lucide-react";
+import { Save, X, Package, Loader2, ScanBarcode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import useAdd from "../../../api/useAdd";
@@ -30,6 +30,10 @@ const AddProduct = () => {
   const validationSchema = Yup.object({
     name: Yup.string().required(t("validation.required")),
     category: Yup.number().required(t("validation.required")),
+    barcode: Yup.string()
+      .trim()
+      .max(64)
+      .matches(/^[0-9A-Za-z\-_.]*$/, t("validation.invalid", "Invalid value")),
   });
 
   const { handleAdd, loading, error } = useAdd(
@@ -44,10 +48,11 @@ const AddProduct = () => {
     initialValues: {
       name: "",
       category: "",
+      barcode: "",
     },
     validationSchema,
     onSubmit: (values) => {
-      handleAdd(values);
+      handleAdd({ ...values, barcode: values.barcode.trim() || null });
     },
   });
 
@@ -110,6 +115,17 @@ const AddProduct = () => {
                   loading={categoriesLoading}
                   error={formik.touched.category && Boolean(formik.errors.category)}
                   helperText={formik.touched.category && formik.errors.category}
+                />
+                <FormTextField
+                  name="barcode"
+                  label={t("product.barcode")}
+                  value={formik.values.barcode}
+                  onChange={formik.handleChange}
+                  placeholder={t("product.barcodePlaceholder")}
+                  autoComplete="off"
+                  startAdornment={<ScanBarcode className="h-4 w-4 text-muted-foreground" />}
+                  error={formik.touched.barcode && Boolean(formik.errors.barcode)}
+                  helperText={(formik.touched.barcode && formik.errors.barcode) || t("product.barcodeHint")}
                 />
               </div>
             </form>

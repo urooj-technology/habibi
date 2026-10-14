@@ -1643,7 +1643,10 @@
     "deleteError": "Error deleting product",
     "searchPlaceholder": "Search products...",
     "noProducts": "No products found",
-    "deleteConfirmation": "Are you sure you want to delete this product?"
+    "deleteConfirmation": "Are you sure you want to delete this product?",
+    "barcode": "Barcode",
+    "barcodeHint": "Leave empty to auto-generate a barcode",
+    "barcodePlaceholder": "Scan or type a barcode (optional)"
   },
   "validation": {
     "required": "This field is required",
@@ -3288,5 +3291,23 @@
       "delete": "Delete",
       "manage": "Manage"
     }
+  },
+  "itemEntry": {
+    "barcode": "Barcode",
+    "barcodePlaceholder": "Scan or type barcode, then Enter",
+    "productSearch": "Product name",
+    "productSearchPlaceholder": "Search product by name or barcode…",
+    "notFound": "No product found with barcode \"{{code}}\"",
+    "outOfStock": "\"{{name}}\" is out of stock",
+    "stockLimit": "Only {{available}} of \"{{name}}\" in stock",
+    "added": "\"{{name}}\" added",
+    "increased": "\"{{name}}\" quantity increased",
+    "noResults": "No matching products",
+    "emptyTitle": "No items yet",
+    "emptyHint": "Scan a barcode or search a product by name to add it to the list.",
+    "stock": "Stock",
+    "inList": "In list",
+    "product": "Product",
+    "shortcuts": "F2 barcode · F3 product search"
   }
 }
