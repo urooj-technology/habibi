@@ -24,6 +24,17 @@ import { cn } from "@/lib/utils";
 
 const MAX_RESULTS = 50;
 const FEEDBACK_MS = 2600;
+// Scanners type the whole code within a few ms; wait this long after the last
+// keystroke before treating an exact barcode match as a complete scan.
+const SCAN_SETTLE_MS = 120;
+
+const isEditableTarget = (node) =>
+  node instanceof HTMLElement &&
+  (node.isContentEditable ||
+    node.tagName === "INPUT" ||
+    node.tagName === "TEXTAREA" ||
+    node.tagName === "SELECT" ||
+    node.closest("[role='combobox'], [role='listbox'], [role='dialog']"));
 
 const normalize = (value) => String(value ?? "").trim().toLowerCase();
 
@@ -103,6 +114,20 @@ const ItemEntryBar = forwardRef(function ItemEntryBar(
         event.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
+      } else if (
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target) &&
+        !document.querySelector("[role='dialog']") &&
+        barcodeRef.current &&
+        !barcodeRef.current.disabled
+      ) {
+        // A scan while nothing is focused still lands in the barcode field.
+        event.preventDefault();
+        barcodeRef.current.focus();
+        setBarcode((prev) => prev + event.key);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -163,6 +188,26 @@ const ItemEntryBar = forwardRef(function ItemEntryBar(
     },
     [getDisabledReason, onPick, showFeedback]
   );
+
+  const pickRef = useRef(pick);
+  pickRef.current = pick;
+
+  useEffect(() => {
+    const code = normalize(barcode);
+    if (!code) return undefined;
+    const match = barcodeIndex.get(code);
+    if (!match) return undefined;
+    const timer = window.setTimeout(() => {
+      pickRef.current(match, "barcode");
+      setBarcode("");
+      barcodeRef.current?.focus();
+    }, SCAN_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [barcode, barcodeIndex]);
+
+  useEffect(() => {
+    if (!disabled) barcodeRef.current?.focus();
+  }, [disabled]);
 
   const submitBarcode = () => {
     const code = barcode.trim();
