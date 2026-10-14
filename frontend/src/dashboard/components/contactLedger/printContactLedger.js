@@ -1,3 +1,4 @@
+import { shopAddressLine, shopPhoneLine } from "@/config/shopConfig";
 /**
  * Opens a print-ready contact ledger statement in a new window.
  * Used by customer and supplier ledgers.
@@ -424,8 +425,8 @@ export function printContactLedger({
     </div>
 
     <footer class="footer">
-      <span>تلفن: 0778450873 — 0782210000</span>
-      <span>آدرس: سرک سوم شاه شهید، روبروی مسجد شاه</span>
+      <span dir="auto">${escapeHtml(shopPhoneLine())}</span>
+      <span dir="auto">${escapeHtml(shopAddressLine())}</span>
     </footer>
   </div>
   <script>

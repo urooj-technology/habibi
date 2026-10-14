@@ -1,5 +1,6 @@
 import React, { forwardRef } from "react";
 import { useTranslation } from "react-i18next";
+import { shopAddressLine, shopPhoneLine } from "@/config/shopConfig";
 
 const FONT =
   "Tahoma, 'Segoe UI', 'Noto Naskh Arabic', 'Noto Sans Arabic', Arial, sans-serif";
@@ -36,13 +37,15 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
 ) {
   const { t } = useTranslation();
   const shopName = t("common.shortName", "Poshak Habibi");
-  const phone = t("receipt.phone", "0778450873 — 0782210000");
+  const phone = shopPhoneLine();
+  const address = shopAddressLine();
 
   return (
     <div ref={ref} style={s.page}>
       <header style={s.header}>
         <div style={s.shopName}>{shopName}</div>
         <div style={s.shopMeta}>{phone}</div>
+        <div style={s.shopAddress}>{address}</div>
       </header>
 
       <div style={s.rule} />
@@ -152,6 +155,12 @@ const s = {
     marginTop: 2,
     fontSize: "10px",
     fontWeight: 600,
+    unicodeBidi: "plaintext",
+  },
+  shopAddress: {
+    marginTop: 1,
+    fontSize: "9.5px",
+    lineHeight: 1.3,
   },
   rule: {
     borderTop: "1.5px solid #000",

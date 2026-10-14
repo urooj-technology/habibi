@@ -1545,7 +1545,7 @@
     "paymentOverdue": "تادیه له مودې تیره"
   },
   "receipt": {
-    "phone": "0778450873 — 0782210000",
+    "phone": "0777110890 — 0701023354",
     "number": "شمېره",
     "date": "نېټه",
     "contact": "اړیکه",
@@ -1562,7 +1562,10 @@
     "purchaseBill": "د پېرودنې بل",
     "thankYou": "مننه",
     "thankYouSale": "د پیرودلو مننه",
-    "thankYouPurchase": "پېرودنه ثبت شوه"
+    "thankYouPurchase": "پېرودنه ثبت شوه",
+    "phoneLabel": "تلیفون",
+    "addressLabel": "پته",
+    "address": "د زنانه باغ دهنه، د پنجشیر سوداګریز مرکز شاته، غفار ټاور، ښکتنی پوړ"
   },
   "backup": {
     "title": "بیک اپ",

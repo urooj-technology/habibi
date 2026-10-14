@@ -1566,7 +1566,7 @@
     "paymentOverdue": "Payment overdue"
   },
   "receipt": {
-    "phone": "0778450873 — 0782210000",
+    "phone": "0777110890 — 0701023354",
     "number": "No.",
     "date": "Date",
     "contact": "Contact",
@@ -1583,7 +1583,10 @@
     "purchaseBill": "Purchase bill",
     "thankYou": "Thank you",
     "thankYouSale": "Thank you for your purchase",
-    "thankYouPurchase": "Purchase recorded"
+    "thankYouPurchase": "Purchase recorded",
+    "phoneLabel": "Phone",
+    "addressLabel": "Address",
+    "address": "Dahan-e Bagh-e Zanana, behind Panjshir Trade Center, Ghaffar Tower, ground floor"
   },
   "backup": {
     "title": "Backup",

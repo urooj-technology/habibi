@@ -3,11 +3,17 @@
  * Matches the contact-ledger / sales bill print look.
  */
 
+import { shopAddressLine, shopPhoneLine } from "@/config/shopConfig";
+
 export const COMPANY = {
   name: "پوشاک حبیبی",
   tagline: "فروشگاه پوشاک — عرضه کننده انواع لباس مردانه، زنانه و بچه‌گانه",
-  phone: "تلفن: 0778450873 — 0782210000",
-  address: "آدرس: سرک سوم شاه شهید، روبروی مسجد شاه",
+  get phone() {
+    return shopPhoneLine();
+  },
+  get address() {
+    return shopAddressLine();
+  },
 };
 
 export function escapeHtml(value) {
@@ -292,8 +298,8 @@ export function signaturesHtml() {
 export function footerHtml() {
   return `
     <footer class="footer">
-      <span>${escapeHtml(COMPANY.phone)}</span>
-      <span>${escapeHtml(COMPANY.address)}</span>
+      <span dir="auto">${escapeHtml(COMPANY.phone)}</span>
+      <span dir="auto">${escapeHtml(COMPANY.address)}</span>
     </footer>
   `;
 }

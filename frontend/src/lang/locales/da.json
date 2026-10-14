@@ -1551,7 +1551,7 @@
     "paymentOverdue": "پرداخت معوق"
   },
   "receipt": {
-    "phone": "0778450873 — 0782210000",
+    "phone": "0777110890 — 0701023354",
     "number": "شماره",
     "date": "تاریخ",
     "contact": "تماس",
@@ -1568,7 +1568,10 @@
     "purchaseBill": "بل خرید",
     "thankYou": "تشکر",
     "thankYouSale": "تشکر از خرید شما",
-    "thankYouPurchase": "ثبت خرید"
+    "thankYouPurchase": "ثبت خرید",
+    "phoneLabel": "تلفن",
+    "addressLabel": "آدرس",
+    "address": "دهن باغ زنانه، عقب مرکز تجارتی پنجشیر، غفار تاور، منزل تحتانی"
   },
   "backup": {
     "title": "پشتیبان‌گیری",
