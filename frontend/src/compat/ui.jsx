@@ -458,19 +458,59 @@ export const DialogActions = ({ sx, className, children, ...rest }) => (
 
 /* ---------------------------------- Menu ---------------------------------- */
 export const Menu = ({ open, anchorEl, onClose, children, sx, className, ...rest }) => {
-  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const menuRef = React.useRef(null);
+  const [pos, setPos] = React.useState(null);
+
+  const place = React.useCallback(() => {
+    if (!anchorEl?.getBoundingClientRect || !menuRef.current) return;
+    const gap = 4;
+    const edge = 8;
+    const a = anchorEl.getBoundingClientRect();
+    const m = menuRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const rtl = document.documentElement.dir === 'rtl';
+
+    // Prefer aligning with the anchor's start edge; flip when it would overflow.
+    let left = rtl ? a.right - m.width : a.left;
+    if (left + m.width > vw - edge) left = a.right - m.width;
+    if (left < edge) left = a.left;
+    left = Math.min(Math.max(edge, left), Math.max(edge, vw - m.width - edge));
+
+    let top = a.bottom + gap;
+    if (top + m.height > vh - edge && a.top - gap - m.height >= edge) top = a.top - gap - m.height;
+    top = Math.min(Math.max(edge, top), Math.max(edge, vh - m.height - edge));
+
+    setPos({ top, left });
+  }, [anchorEl]);
+
   React.useLayoutEffect(() => {
-    if (open && anchorEl && anchorEl.getBoundingClientRect) {
-      const r = anchorEl.getBoundingClientRect();
-      setPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
-    }
-  }, [open, anchorEl]);
+    if (!open) { setPos(null); return undefined; }
+    place();
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, place, onClose]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50" onClick={() => onClose?.()}>
       <div
-        className={cn('absolute min-w-[10rem] rounded-md border border-border bg-popover text-popover-foreground shadow-pop py-1', className)}
-        style={{ top: pos.top, left: pos.left, ...(sxToStyle(sx) || {}) }}
+        ref={menuRef}
+        role="menu"
+        className={cn('fixed min-w-[10rem] max-w-[calc(100vw-1rem)] max-h-[calc(100vh-1rem)] overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-pop py-1', className)}
+        style={{
+          top: pos?.top ?? 0,
+          left: pos?.left ?? 0,
+          visibility: pos ? 'visible' : 'hidden',
+          ...(sxToStyle(sx) || {}),
+        }}
         onClick={(e) => e.stopPropagation()}
         {...rest}
       >{children}</div>
@@ -484,7 +524,8 @@ export const MenuItem = React.forwardRef(({ onClick, selected, disabled, dense, 
     disabled={disabled}
     onClick={onClick}
     data-value={value}
-    className={cn('flex w-full items-center gap-2 px-3 text-left text-sm hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer', dense ? 'py-1' : 'py-2', selected && 'bg-primary/10 text-primary', className)}
+    role="menuitem"
+    className={cn('flex w-full items-center gap-2 whitespace-nowrap px-3 text-start text-sm hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer', dense ? 'py-1' : 'py-2', selected && 'bg-primary/10 text-primary', className)}
     style={sxToStyle(sx)}
     {...rest}
   >{children}</button>

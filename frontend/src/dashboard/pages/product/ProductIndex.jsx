@@ -42,6 +42,8 @@ import ReusableTable from "../../../components/ReusableTable";
 import { InlineAlert } from "../../../components/AlertMessage";
 import { FormModal } from "../../../components/Modal";
 import { FormSelectField } from "../../../components/FormFields";
+import BarcodeLabelDialog from "../../../components/BarcodeLabelDialog";
+import { ScanBarcode } from "lucide-react";
 
 const ProductIndex = () => {
   const { t } = useTranslation();
@@ -68,6 +70,7 @@ const ProductIndex = () => {
   // Single selected product for view dialog
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [viewMoreOpen, setViewMoreOpen] = useState(false);
+  const [labelProducts, setLabelProducts] = useState(null);
 
   const { data: categories = [] } = useFetchObjects(
     ["categories"],
@@ -398,6 +401,16 @@ const ProductIndex = () => {
             {t("common.close")}
           </Button>
           <Button
+            variant="outlined"
+            disabled={!selectedProduct.barcode}
+            onClick={() => {
+              setViewMoreOpen(false);
+              setLabelProducts([selectedProduct]);
+            }}
+          >
+            {t("barcodeLabel.print")}
+          </Button>
+          <Button
             variant="contained"
             color="primary"
             onClick={() => {
@@ -451,6 +464,15 @@ const ProductIndex = () => {
         onEdit={handleEdit}
         onView={handleView}
         onDelete={handleDelete}
+        extraRowActions={[
+          {
+            key: "barcode-label",
+            title: t("barcodeLabel.print"),
+            icon: <ScanBarcode className="h-4 w-4" />,
+            onClick: (row) => setLabelProducts([row]),
+            disabled: (row) => !row.barcode,
+          },
+        ]}
         onSearch={handleSearch}
         searchQuery={searchQuery}
         rowActions={true}
@@ -464,6 +486,12 @@ const ProductIndex = () => {
       />
 
       <ViewMoreDialog />
+
+      <BarcodeLabelDialog
+        open={Boolean(labelProducts)}
+        onClose={() => setLabelProducts(null)}
+        products={labelProducts || []}
+      />
 
       <Menu
         id="product-menu"
@@ -480,6 +508,15 @@ const ProductIndex = () => {
         <MenuItem onClick={handlePrintList}>
           <PrintIcon fontSize="small" sx={{ mr: 1 }} />
           {t("common.print")}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            setLabelProducts(productsData || []);
+          }}
+        >
+          <ScanBarcode className="me-2 h-4 w-4" />
+          {t("barcodeLabel.printAll")}
         </MenuItem>
       </Menu>
 

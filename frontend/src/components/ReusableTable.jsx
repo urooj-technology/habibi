@@ -69,7 +69,7 @@ function useDirection() {
   return direction;
 }
 
-function IconAction({ title, onClick, className, children }) {
+function IconAction({ title, onClick, className, disabled, children }) {
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -77,8 +77,10 @@ function IconAction({ title, onClick, className, children }) {
           <button
             type="button"
             onClick={onClick}
+            disabled={disabled}
+            aria-label={title}
             className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+              "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40",
               className
             )}
           >
@@ -259,6 +261,7 @@ const ReusableTable = ({
   onView,
   onDelete,
   onLedger,
+  extraRowActions = [],
   onSearch,
   searchQuery: externalSearchQuery = "",
   enableSelection = false,
@@ -512,6 +515,20 @@ const ReusableTable = ({
                                   <Receipt className="h-4 w-4" />
                                 </IconAction>
                               )}
+                              {extraRowActions.map((action) => (
+                                <IconAction
+                                  key={action.key}
+                                  title={action.title}
+                                  className={action.className || "text-primary hover:bg-primary/10"}
+                                  disabled={action.disabled?.(row)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    action.onClick(row);
+                                  }}
+                                >
+                                  {action.icon}
+                                </IconAction>
+                              ))}
                               {onView && (
                                 <IconAction
                                   title={t("common.view")}
@@ -658,6 +675,16 @@ ReusableTable.propTypes = {
   onEdit: PropTypes.func,
   onView: PropTypes.func,
   onDelete: PropTypes.func,
+  extraRowActions: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      title: PropTypes.string,
+      icon: PropTypes.node,
+      onClick: PropTypes.func.isRequired,
+      disabled: PropTypes.func,
+      className: PropTypes.string,
+    })
+  ),
   onLedger: PropTypes.func,
   onSearch: PropTypes.func,
   searchQuery: PropTypes.string,

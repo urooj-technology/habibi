@@ -3309,5 +3309,27 @@
     "inList": "In list",
     "product": "Product",
     "shortcuts": "F2 barcode · F3 product search"
+  },
+  "barcodeLabel": {
+    "title": "Print barcode labels",
+    "labelSize": "Label size",
+    "custom": "Custom",
+    "roll": "{{width}}mm roll",
+    "width": "Width",
+    "height": "Height",
+    "content": "Label content",
+    "showName": "Product name",
+    "showCategory": "Category",
+    "showCode": "Barcode number",
+    "preview": "Preview",
+    "printerHint": "In the print dialog choose your thermal printer, set paper size to the label size, margins to None and scale to 100%.",
+    "products": "Products",
+    "copies": "Copies",
+    "copiesForAll": "Copies for all",
+    "noProducts": "No products with a barcode",
+    "skipped": "{{count}} product(s) without a barcode were skipped",
+    "total": "Total labels: {{count}}",
+    "print": "Print labels",
+    "printAll": "Print barcode labels"
   }
 }
