@@ -305,6 +305,7 @@ class SaleReturnableItemsMixin:
                     "product_details": {
                         "id": product.id,
                         "name": product.name,
+                        "barcode": product.barcode,
                     }
                     if product
                     else None,
@@ -312,7 +313,7 @@ class SaleReturnableItemsMixin:
                     "buy_price": str(item.buy_price or 0),
                     "sold_quantity": str(_d(item.quantity)),
                     "remaining_quantity": str(remaining),
-                    "note": item.note,
+                    "note": "",
                 }
             )
         return Response(
