@@ -50,21 +50,24 @@ set "PYCMD=%PY%"
 
 :py_ok
 echo.
-echo [1/6] Creating virtual environment (.venv)...
-if not exist ".venv\Scripts\python.exe" (
-  %PYCMD% -m venv .venv
+echo [1/6] Virtual environment...
+set "VENV=.venv"
+if not exist "%VENV%\Scripts\python.exe" if exist "venv\Scripts\python.exe" set "VENV=venv"
+if not exist "%VENV%\Scripts\python.exe" (
+  echo Creating %VENV% ...
+  %PYCMD% -m venv %VENV%
   if errorlevel 1 (
     echo ERROR: Failed to create virtual environment.
     pause
     exit /b 1
   )
 ) else (
-  echo Virtual environment already exists.
+  echo Using existing %VENV%
 )
 
 echo.
 echo [2/6] Upgrading pip...
-".venv\Scripts\python.exe" -m pip install --upgrade pip
+"%VENV%\Scripts\python.exe" -m pip install --upgrade pip
 if errorlevel 1 (
   echo ERROR: pip upgrade failed.
   pause
@@ -73,7 +76,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/6] Installing Python packages...
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
+"%VENV%\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
   echo ERROR: pip install failed. Use Python 3.12/3.13 and try again.
   pause
@@ -97,7 +100,7 @@ if not exist "frontend\.env" (
 
 echo.
 echo [5/6] Running database migrations...
-".venv\Scripts\python.exe" manage.py migrate
+"%VENV%\Scripts\python.exe" manage.py migrate
 if errorlevel 1 (
   echo ERROR: migrate failed.
   pause
@@ -105,24 +108,17 @@ if errorlevel 1 (
 )
 
 echo.
-echo [6/6] Installing frontend dependencies...
-where npm >nul 2>&1
-if errorlevel 1 (
-  echo ERROR: Node.js / npm not found.
-  echo Install Node.js LTS from https://nodejs.org/ then run setup again
-  echo ^(or only run: cd frontend ^&^& npm install^)
-  pause
-  exit /b 1
+echo [6/6] Frontend build (static\frontend)...
+if exist "static\frontend\index.html" (
+  echo React build already present - Node.js is not needed on this PC.
+  echo To rebuild after code changes run: scripts\windows\build-frontend.bat
+) else (
+  call "%~dp0build-frontend.bat" nopause
+  if errorlevel 1 (
+    pause
+    exit /b 1
+  )
 )
-pushd frontend
-call npm install
-if errorlevel 1 (
-  popd
-  echo ERROR: npm install failed.
-  pause
-  exit /b 1
-)
-popd
 
 echo.
 echo ========================================
@@ -133,6 +129,7 @@ echo   1. Optional: create admin user
 echo        scripts\windows\create-admin.bat
 echo   2. Start the app
 echo        scripts\windows\start-all.bat
+echo   3. Open http://127.0.0.1:8000
 echo ========================================
 pause
 endlocal

@@ -1,16 +1,22 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0..\.."
 
-echo Starting backend and frontend in separate windows...
-start "Poshak Habibi - Backend" cmd /k "%~dp0start-backend.bat"
-timeout /t 2 /nobreak >nul
-start "Poshak Habibi - Frontend" cmd /k "%~dp0start-frontend.bat"
+if not exist "static\frontend\index.html" (
+  echo React build not found - building it first...
+  call "%~dp0build-frontend.bat" nopause
+  if errorlevel 1 (
+    pause
+    exit /b 1
+  )
+)
+
+REM Django serves both the API and the React app on one port.
+start "Poshak Habibi" cmd /k "%~dp0start-backend.bat"
 
 echo.
-echo Backend:  http://127.0.0.1:8000
-echo Frontend: http://localhost:5173
-echo.
-echo Open the Frontend URL in Chrome/Edge after both windows show "ready".
-pause
+echo App: http://127.0.0.1:8000
+echo Keep the "Poshak Habibi" window open while using the app.
+timeout /t 3 /nobreak >nul
+start "" "http://127.0.0.1:8000"
 endlocal

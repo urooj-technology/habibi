@@ -239,7 +239,7 @@ const AdminLayoutContent = ({ children, direction, filteredMenuItems, isMenuActi
         <SidebarHeader>
           <div className="flex min-w-0 items-center gap-2.5 px-0.5 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <img
-              src="/image/logo.jpeg"
+              src={`${import.meta.env.BASE_URL}image/logo.jpeg`}
               alt={t("common.shortName", "Poshak Habibi")}
               className="h-8 w-8 shrink-0 object-contain"
             />

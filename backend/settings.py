@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     "rest_framework.authtoken",
     # build-in application
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -155,6 +157,11 @@ STATIC_ROOT = config("STATIC_ROOT", default="static/") or "static/"
 MEDIA_URL = config("MEDIA_URL", default="media/") or "media/"
 MEDIA_ROOT = config("MEDIA_ROOT", default="media/") or "media/"
 
+# React build output (vite build -> static/frontend), served by WhiteNoise at
+# /static/frontend/ and index.html at the site root. Must match vite.config.js.
+FRONTEND_BUILD_DIR = BASE_DIR / "static" / "frontend"
+WHITENOISE_INDEX_FILE = False
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -197,7 +204,7 @@ DEFAULT_FROM_EMAIL = (
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default='30', cast=_int_or(30))
 
 # Frontend URL for email links
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173') or 'http://localhost:5173'
+FRONTEND_URL = config('FRONTEND_URL', default='http://127.0.0.1:8000') or 'http://127.0.0.1:8000'
 
 # Add Knox settings
 REST_KNOX = {

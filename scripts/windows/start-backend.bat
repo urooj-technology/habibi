@@ -2,7 +2,9 @@
 setlocal
 cd /d "%~dp0..\.."
 
-if not exist ".venv\Scripts\python.exe" (
+set "VENV=.venv"
+if not exist ".venv\Scripts\python.exe" if exist "venv\Scripts\python.exe" set "VENV=venv"
+if not exist "%VENV%\Scripts\python.exe" (
   echo ERROR: Run scripts\windows\setup.bat first.
   pause
   exit /b 1
@@ -14,8 +16,8 @@ if not exist ".env" (
   exit /b 1
 )
 
-echo Starting Django API on http://127.0.0.1:8000 ...
+echo Starting Poshak Habibi on http://127.0.0.1:8000 (API + app) ...
 echo Keep this window open.
-".venv\Scripts\python.exe" manage.py runserver 127.0.0.1:8000
+"%VENV%\Scripts\python.exe" manage.py runserver 127.0.0.1:8000
 pause
 endlocal

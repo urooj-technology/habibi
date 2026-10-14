@@ -7,7 +7,7 @@ set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "TARGET=%~dp0start-all-hidden.vbs"
 set "LINK=%STARTUP%\PoshakHabibi.lnk"
 
-if not exist "%~dp0..\..\.venv\Scripts\python.exe" (
+if not exist "%~dp0..\..\.venv\Scripts\python.exe" if not exist "%~dp0..\..\venv\Scripts\python.exe" (
   echo ERROR: Run setup.bat first, then enable auto-start.
   pause
   exit /b 1

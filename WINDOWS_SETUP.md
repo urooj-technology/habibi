@@ -1,125 +1,94 @@
 # Run Poshak Habibi on Windows (client PC)
 
-This app has two parts:
+Django serves everything on one address:
 
-| Part | Technology | URL |
-|------|------------|-----|
-| Backend API | Django (Python) | http://127.0.0.1:8000 |
-| Frontend UI | React (Vite / Node.js) | http://localhost:5173 |
+| What | URL |
+|------|-----|
+| The app (React) | http://127.0.0.1:8000 |
+| API | http://127.0.0.1:8000/api/ |
+| Django admin | http://127.0.0.1:8000/admin/ |
 
-Use **SQLite** on the client PC (default). No MySQL install needed.
+The React app is built into `static\frontend\` and served by Django. Only one
+window (the Django server) needs to run. Data is stored in SQLite (`db.sqlite3`).
 
 ---
 
-## Important: Python version
+## Requirements
 
-**Do not use Python 3.15.0** on the client machine for this project.
-
-| Python | Status with this project (Django 5.1) |
-|--------|----------------------------------------|
-| **3.12 or 3.13** | Supported — use one of these |
-| 3.14 | May work; prefer 3.13 |
-| **3.15** | **Not supported** — packages/Django wheels will fail |
-
-Install **Python 3.13** (recommended):
-
-1. Download: https://www.python.org/downloads/release/python-3139/  
-   (or any 3.13.x Windows installer, 64-bit)
-2. Run the installer.
-3. Check **“Add python.exe to PATH”**.
-4. Check **“Install pip”**.
-5. Finish install, then open a **new** Command Prompt.
-
-Also install **Node.js LTS** (includes npm): https://nodejs.org/
+- **Python 3.12 or 3.13.** Do **not** use Python 3.15: Django 5.1 does not support it.
+  ```powershell
+  winget install --id Python.Python.3.12 -e --source winget
+  ```
+- **Node.js LTS** is only needed to *build* the React app. If you copy the project
+  with `static\frontend\index.html` already built, the client PC does not need Node.js.
 
 ---
 
 ## First-time setup (once)
 
-1. Copy the whole project folder to the Windows PC (e.g. `C:\habibi`).
-2. Open Command Prompt in that folder.
-3. Run:
+1. Copy the whole project folder to the PC (e.g. `D:\habibi`).
+2. Open Command Prompt (CMD) in that folder and run:
 
 ```bat
 scripts\windows\setup.bat
 ```
 
-This will:
+This creates/uses the virtual environment (`.venv` or `venv`), installs Python
+packages, creates `.env` from `.env.example`, runs migrations, and builds the
+React app if `static\frontend` is missing.
 
-- create `.venv`
-- install Python packages from `requirements.txt`
-- create `.env` and `frontend\.env` from examples (if missing)
-- run database migrations
-- run `npm install` in `frontend`
-
-4. Create an admin user (login for the app):
+3. Create the login user:
 
 ```bat
 scripts\windows\create-admin.bat
 ```
 
-Follow the prompts (username, email, password).
-
 ---
 
-## Start the app every day
-
-### Option A — Manual (each time you need it)
-
-Double-click or run:
+## Start the app
 
 ```bat
 scripts\windows\start-all.bat
 ```
 
-Or start each part separately:
+This starts Django and opens http://127.0.0.1:8000 in the browser. Keep the
+"Poshak Habibi" window open while using the app.
 
-```bat
-scripts\windows\start-backend.bat
-scripts\windows\start-frontend.bat
-```
-
-Then open a browser: **http://localhost:5173**
-
-### Option B — Auto-start when Windows turns on
-
-By default the app does **not** start after reboot. To enable that (once):
+### Auto-start when Windows starts
 
 ```bat
 scripts\windows\enable-autostart.bat
 ```
 
-After you log into Windows, backend + frontend start minimized. Open:
-
-**http://localhost:5173**
-
-To turn auto-start off:
-
-```bat
-scripts\windows\disable-autostart.bat
-```
-
-**Note:** Auto-start runs after you **log in** to Windows (user account). If nobody logs in, it will not start. Keep two small console windows minimized in the taskbar while the app is running.
+After you log into Windows, the server starts minimized. Open
+http://127.0.0.1:8000. To turn it off: `scripts\windows\disable-autostart.bat`.
 
 ---
 
-## Config files (optional edits)
+## After changing React code
 
-### Root `.env`
+Rebuild, then restart the server:
 
-Created from `.env.example`. Important defaults:
-
-- `DB_ENGINE=sqlite` — local file database (`db.sqlite3`)
-- `CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173`
-- `FRONTEND_URL=http://localhost:5173`
-
-### `frontend\.env`
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
+```bat
+scripts\windows\build-frontend.bat
 ```
 
-If you change the backend host/port, update this and restart the frontend.
+Or manually: `cd frontend` then `npm run build`. The output goes to
+`static\frontend\` (not `frontend\dist\`).
+
+For development with hot reload you can still use `npm run dev` (Vite on
+http://localhost:5173, talking to Django on port 8000).
+
+---
+
+## Manual commands (PowerShell)
+
+If PowerShell blocks `Activate.ps1`, call the venv Python directly:
+
+```powershell
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+```
 
 ---
 
@@ -127,19 +96,15 @@ If you change the backend host/port, update this and restart the frontend.
 
 | Problem | Fix |
 |---------|-----|
-| `pip install` fails on Python 3.15 | Uninstall 3.15 for this project; install **3.13** and re-run `setup.bat` |
-| `python` not found | Reinstall Python with “Add to PATH”, open a **new** CMD |
-| `npm` not found | Install Node.js LTS, open a **new** CMD |
-| Frontend loads but API errors | Ensure backend window is running; check `frontend\.env` URL |
-| Port 8000 or 5173 in use | Close the other program, or change ports in the start scripts / Vite config |
-| Blank login / CORS errors | Confirm `.env` CORS origins include `http://localhost:5173` |
+| Page says "Frontend is not built" | Run `scripts\windows\build-frontend.bat` |
+| `pip install` fails | Use Python 3.12/3.13, not 3.15 |
+| `No module named 'whitenoise'` | Run `scripts\windows\setup.bat` again (installs new requirements) |
+| `invalid literal for int()` on start | Fill in empty numbers in `.env` (e.g. `EMAIL_PORT=465`) |
+| Open from another PC on the network | Run server on `0.0.0.0:8000` and add the PC's IP to `ALLOWED_HOSTS` in `.env` |
+| Port 8000 in use | Close the other program, or change the port in `start-backend.bat` |
 
 ---
 
-## Backup tip for the client
+## Backup
 
-With SQLite, the main data file is:
-
-`db.sqlite3`
-
-Copy that file (while the app is stopped) to back up shop data. Uploaded files live in the `media\` folder.
+Stop the app, then copy `db.sqlite3` (all shop data) and the `media\` folder.
