@@ -161,6 +161,10 @@ MEDIA_ROOT = config("MEDIA_ROOT", default="media/") or "media/"
 # /static/frontend/ and index.html at the site root. Must match vite.config.js.
 FRONTEND_BUILD_DIR = BASE_DIR / "static" / "frontend"
 WHITENOISE_INDEX_FILE = False
+# With DEBUG=False WhiteNoise only indexes static files at startup, so a fresh
+# `npm run build` (new hashed asset names) would 404 until a restart. This is a
+# single-machine install, so re-check the disk instead.
+WHITENOISE_AUTOREFRESH = config("WHITENOISE_AUTOREFRESH", default=True, cast=bool)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
