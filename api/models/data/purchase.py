@@ -59,6 +59,13 @@ class PurchaseItem(DataRoot):
     buy_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
     )
+    sell_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Selling price defined for this stock at purchase time.",
+    )
 
     def __str__(self):
         return f"PurchaseItem #{self.pk} for Purchase #{self.purchase_id}"

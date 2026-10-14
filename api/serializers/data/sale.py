@@ -43,6 +43,7 @@ class SaleItemsSerializer(DataRootSerializer):
             "product_details": _product_details(product),
             "quantity": inv.quantity,
             "buy_price": inv.buy_price,
+            "sell_price": inv.sell_price,
         }
 
     def get_line_total(self, obj):

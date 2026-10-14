@@ -3334,5 +3334,14 @@
     "total": "Total labels: {{count}}",
     "print": "Print labels",
     "printAll": "Print barcode labels"
+  },
+  "pricing": {
+    "sellPrice": "Sell price",
+    "sellPriceHint": "Default price used when selling; updated by each purchase.",
+    "listPrice": "List",
+    "resetToList": "Use list price",
+    "cost": "Cost",
+    "margin": "+{{percent}}% (+{{profit}})",
+    "belowCost": "Below cost ({{cost}})"
   }
 }

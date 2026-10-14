@@ -35,7 +35,7 @@ class PurchaseViewSet(DataRootViewSet):
     def _bad_request(self, payload):
         """Return 400 and ensure the surrounding atomic block rolls back."""
         transaction.set_rollback(True)
-        return self._bad_request(payload)
+        return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
     def _normalize_optional_supplier(self, data):
         """Allow blank / empty supplier for walk-in cash purchases."""
@@ -83,6 +83,23 @@ class PurchaseViewSet(DataRootViewSet):
         ):
             return {"detail": "Payment account must be a cash or bank account."}
         return None
+
+    def _line_sell_price(self, item_data):
+        """Optional sell price on a purchase line; None when not provided."""
+        raw = item_data.get("sell_price")
+        if raw is None or str(raw).strip() == "":
+            return None
+        value = self.safe_decimal(raw)
+        if value < 0:
+            raise ValueError("Sell price cannot be negative.")
+        return value
+
+    def _apply_sell_price(self, product_id, sell_price):
+        if sell_price is None:
+            return
+        Inventory.objects.filter(product_id=product_id, is_deleted=False).update(
+            sell_price=sell_price
+        )
 
     def _line_qty(self, item_data):
         return self.safe_decimal(
@@ -216,6 +233,7 @@ class PurchaseViewSet(DataRootViewSet):
                 Product.objects.get(id=product_id)
                 quantity = self._line_qty(item_data)
                 buy_price = self.safe_decimal(item_data.get("buy_price", 0))
+                sell_price = self._line_sell_price(item_data)
 
                 if quantity <= 0:
                     return self._bad_request(
@@ -232,12 +250,14 @@ class PurchaseViewSet(DataRootViewSet):
                     product_id=product_id,
                     quantity=quantity,
                     buy_price=buy_price,
+                    sell_price=sell_price,
                 )
                 inv_err = self._apply_inventory_change(
                     product_id, quantity, buy_price
                 )
                 if inv_err:
                     return self._bad_request(inv_err)
+                self._apply_sell_price(product_id, sell_price)
 
             return Response(
                 {"detail": "Purchase created successfully."},
@@ -314,6 +334,7 @@ class PurchaseViewSet(DataRootViewSet):
                 Product.objects.get(id=product_id)
                 quantity = self._line_qty(item_data)
                 buy_price = self.safe_decimal(item_data.get("buy_price", 0))
+                sell_price = self._line_sell_price(item_data)
 
                 if quantity <= 0:
                     return self._bad_request(
@@ -336,12 +357,14 @@ class PurchaseViewSet(DataRootViewSet):
                     product_id=product_id,
                     quantity=quantity,
                     buy_price=buy_price,
+                    sell_price=sell_price,
                 )
                 inv_err = self._apply_inventory_change(
                     product_id, quantity, buy_price, old_item
                 )
                 if inv_err:
                     return self._bad_request(inv_err)
+                self._apply_sell_price(product_id, sell_price)
 
             for product_id, leftovers in list(old_item_queues.items()):
                 for leftover in leftovers:

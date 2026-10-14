@@ -275,6 +275,15 @@ const InventoryIndex = () => {
         value != null && value !== "" ? parseFloat(value).toFixed(2) : "—",
     },
     {
+      id: "sell_price",
+      label: t("pricing.sellPrice"),
+      minWidth: 120,
+      format: (value) =>
+        value != null && value !== "" && parseFloat(value) > 0
+          ? parseFloat(value).toFixed(2)
+          : "—",
+    },
+    {
       id: "min_quantity",
       label: t("inventory.minQuantity", "Min qty"),
       minWidth: 100,
@@ -369,6 +378,14 @@ const InventoryIndex = () => {
                       selectedInventory.buy_price != null &&
                       selectedInventory.buy_price !== ""
                         ? parseFloat(selectedInventory.buy_price).toFixed(2)
+                        : "—"
+                    }
+                  />
+                  <InfoField
+                    label={t("pricing.sellPrice")}
+                    value={
+                      parseFloat(selectedInventory.sell_price) > 0
+                        ? parseFloat(selectedInventory.sell_price).toFixed(2)
                         : "—"
                     }
                   />

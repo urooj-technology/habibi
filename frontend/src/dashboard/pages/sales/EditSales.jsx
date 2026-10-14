@@ -47,6 +47,7 @@ import ItemEntryBar, {
   flashLineClass,
   useItemLineReveal,
 } from "@/components/pos/ItemEntryBar";
+import { ListPriceHint, MarginHint } from "@/components/pos/PriceHints";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -663,8 +664,28 @@ const EditSales = () => {
                 placeholder="0.00"
                 step="0.01"
                 min="0"
-                className={cn(posControlClass, "tabular-nums")}
+                className={cn(
+                  posControlClass,
+                  "tabular-nums",
+                  Number.parseFloat(item.sale_price) > 0 &&
+                    Number.parseFloat(item.inventory?.buy_price) > 0 &&
+                    Number.parseFloat(item.sale_price) <
+                      Number.parseFloat(item.inventory?.buy_price) &&
+                    "border-destructive"
+                )}
               />
+              <ListPriceHint
+                listPrice={item.inventory?.sell_price}
+                price={item.sale_price}
+                onReset={() =>
+                  updateItemField(
+                    item.id,
+                    "sale_price",
+                    Number.parseFloat(item.inventory.sell_price).toString()
+                  )
+                }
+              />
+              <MarginHint cost={item.inventory?.buy_price} price={item.sale_price} />
             </PosField>
           </PosItemCell>
 

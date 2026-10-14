@@ -25,6 +25,7 @@ const buildPayload = (values) => ({
   product: values.product,
   quantity: values.quantity !== "" ? parseFloat(values.quantity || 0) : 0,
   buy_price: parseFloat(values.buy_price || 0),
+  sell_price: parseFloat(values.sell_price || 0),
   min_quantity: parseFloat(values.min_quantity || 0),
 });
 
@@ -66,6 +67,7 @@ const AddInventory = () => {
       product: "",
       quantity: "",
       buy_price: 0,
+      sell_price: 0,
       min_quantity: 0,
     },
     validationSchema,
@@ -147,6 +149,16 @@ const AddInventory = () => {
                   inputProps={{ min: 0, step: "0.01" }}
                   required
                   fullWidth
+                />
+                <FormTextField
+                  name="sell_price"
+                  label={t("pricing.sellPrice")}
+                  type="number"
+                  value={formik.values.sell_price}
+                  onChange={formik.handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  fullWidth
+                  helperText={t("pricing.sellPriceHint")}
                 />
                 <FormTextField
                   name="min_quantity"

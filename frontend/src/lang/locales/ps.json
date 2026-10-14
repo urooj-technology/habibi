@@ -3315,5 +3315,14 @@
     "total": "ټول لیبلونه: {{count}}",
     "print": "لیبل چاپ کړئ",
     "printAll": "د بارکوډ لیبلونه چاپ کړئ"
+  },
+  "pricing": {
+    "sellPrice": "د پلور بیه",
+    "sellPriceHint": "د پلور پر وخت اصلي بیه؛ په هره پېرودنه تازه کېږي.",
+    "listPrice": "ټاکلې بیه",
+    "resetToList": "ټاکلې بیه وکاروئ",
+    "cost": "لګښت",
+    "margin": "+{{percent}}% (+{{profit}})",
+    "belowCost": "د پېر له بیې کمه ({{cost}})"
   }
 }

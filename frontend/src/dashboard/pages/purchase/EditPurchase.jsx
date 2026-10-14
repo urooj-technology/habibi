@@ -55,6 +55,7 @@ import ItemEntryBar, {
   flashLineClass,
   useItemLineReveal,
 } from "@/components/pos/ItemEntryBar";
+import { MarginHint } from "@/components/pos/PriceHints";
 import {
   calculatePricedLineTotal,
   quantityPayload,
@@ -192,12 +193,15 @@ const EditPurchase = () => {
     "inventory/",
     token
   );
-  const stockByProduct = useMemo(() => {
-    const map = new Map();
+  const { stockByProduct, sellPriceByProduct } = useMemo(() => {
+    const stock = new Map();
+    const sell = new Map();
     (Array.isArray(inventory) ? inventory : inventory?.results || []).forEach((inv) => {
-      map.set(Number(inv.product), Number.parseFloat(inv.quantity || 0) || 0);
+      stock.set(Number(inv.product), Number.parseFloat(inv.quantity || 0) || 0);
+      const price = Number.parseFloat(inv.sell_price || 0) || 0;
+      if (price > 0) sell.set(Number(inv.product), price);
     });
-    return map;
+    return { stockByProduct: stock, sellPriceByProduct: sell };
   }, [inventory]);
   const { data: categories = [] } = useFetchObjects(
     ["categories"],
@@ -430,6 +434,10 @@ const EditPurchase = () => {
             item.buy_price != null && item.buy_price !== ""
               ? String(item.buy_price)
               : "",
+          sell_price:
+            item.sell_price != null && item.sell_price !== ""
+              ? String(item.sell_price)
+              : "",
           note: item.note || "",
           total: "0.00",
           isComplete: false,
@@ -582,6 +590,9 @@ const EditPurchase = () => {
         product,
         quantity: "1",
         buy_price: "",
+        sell_price: sellPriceByProduct.has(Number(product.id))
+          ? String(sellPriceByProduct.get(Number(product.id)))
+          : "",
         note: "",
         total: "0.00",
         isComplete: false,
@@ -590,7 +601,7 @@ const EditPurchase = () => {
       revealLine(line.id, source === "search" ? "buy_price" : null);
       return { ok: true, tone: "success", message: t("itemEntry.added", { name }) };
     },
-    [purchaseItems, updateItem, revealLine, t]
+    [purchaseItems, sellPriceByProduct, updateItem, revealLine, t]
   );
 
   pickProductRef.current = pickProduct;
@@ -679,6 +690,9 @@ const EditPurchase = () => {
           product: item.product.id,
           ...quantityPayload(item.quantity),
           buy_price: formatAmount(item.buy_price),
+          ...(item.sell_price !== "" && item.sell_price != null
+            ? { sell_price: formatAmount(item.sell_price) }
+            : {}),
         })),
       };
 
@@ -748,7 +762,7 @@ const EditPurchase = () => {
         complete={isComplete}
         className={cn(flashId === item.id && flashLineClass)}
       >
-        <PosItemRow columns={5}>
+        <PosItemRow columns={6}>
           <PosItemCell>
             <PosField label={t("purchase.selectProduct", "Product")}>
               <PosProductCell
@@ -796,6 +810,31 @@ const EditPurchase = () => {
                 min="0"
                 className={cn(posControlClass, "tabular-nums")}
               />
+            </PosField>
+          </PosItemCell>
+
+          <PosItemCell>
+            <PosField label={t("pricing.sellPrice")}>
+              <Input
+                data-field="sell_price"
+                type="number"
+                value={item.sell_price ?? ""}
+                onChange={(e) =>
+                  updateItem(item.id, "sell_price", e.target.value)
+                }
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                className={cn(
+                  posControlClass,
+                  "tabular-nums",
+                  Number.parseFloat(item.sell_price) > 0 &&
+                    Number.parseFloat(item.buy_price) > 0 &&
+                    Number.parseFloat(item.sell_price) < Number.parseFloat(item.buy_price) &&
+                    "border-destructive"
+                )}
+              />
+              <MarginHint cost={item.buy_price} price={item.sell_price} />
             </PosField>
           </PosItemCell>
 

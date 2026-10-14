@@ -28,6 +28,7 @@ const buildPayload = (values) => ({
   product: values.product,
   quantity: values.quantity !== "" ? parseFloat(values.quantity || 0) : 0,
   buy_price: parseFloat(values.buy_price || 0),
+  sell_price: parseFloat(values.sell_price || 0),
   min_quantity: parseFloat(values.min_quantity || 0),
 });
 
@@ -85,6 +86,7 @@ const EditInventory = () => {
       product: "",
       quantity: "",
       buy_price: 0,
+      sell_price: 0,
       min_quantity: 0,
     },
     validationSchema,
@@ -104,6 +106,7 @@ const EditInventory = () => {
       product: inventoryItem.product || "",
       quantity: inventoryItem.quantity ?? "",
       buy_price: inventoryItem.buy_price ?? 0,
+      sell_price: inventoryItem.sell_price ?? 0,
       min_quantity: inventoryItem.min_quantity ?? 0,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,6 +185,10 @@ const EditInventory = () => {
                 label={t("inventory.buyPrice", "Buy price")}
                 value={formatShopMoney(inventoryItem?.buy_price)}
               />
+              <InfoField
+                label={t("pricing.sellPrice")}
+                value={formatShopMoney(inventoryItem?.sell_price)}
+              />
             </div>
           </FormSection>
 
@@ -217,6 +224,16 @@ const EditInventory = () => {
                   inputProps={{ min: 0, step: "0.01" }}
                   required
                   fullWidth
+                />
+                <FormTextField
+                  name="sell_price"
+                  label={t("pricing.sellPrice")}
+                  type="number"
+                  value={formik.values.sell_price}
+                  onChange={formik.handleChange}
+                  inputProps={{ min: 0, step: "0.01" }}
+                  fullWidth
+                  helperText={t("pricing.sellPriceHint")}
                 />
                 <FormTextField
                   name="min_quantity"

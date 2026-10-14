@@ -5,7 +5,7 @@ from api.models.data.product import Product
 
 
 class Inventory(DataRoot):
-    """Stock row: one per product — quantity and buy price only."""
+    """Stock row: one per product — quantity, average cost and selling price."""
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="inventory"
@@ -15,6 +15,12 @@ class Inventory(DataRoot):
     )
     buy_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    sell_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Default selling price; set from the latest purchase, editable at sale time.",
     )
     min_quantity = models.DecimalField(
         max_digits=12,

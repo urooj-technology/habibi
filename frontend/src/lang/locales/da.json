@@ -3321,5 +3321,14 @@
     "total": "مجموع لیبل‌ها: {{count}}",
     "print": "چاپ لیبل",
     "printAll": "چاپ لیبل بارکد"
+  },
+  "pricing": {
+    "sellPrice": "قیمت فروش",
+    "sellPriceHint": "قیمت پیش‌فرض هنگام فروش؛ با هر خرید به‌روز می‌شود.",
+    "listPrice": "قیمت ثابت",
+    "resetToList": "استفاده از قیمت ثابت",
+    "cost": "قیمت تمام شد",
+    "margin": "+{{percent}}% (+{{profit}})",
+    "belowCost": "کمتر از قیمت خرید ({{cost}})"
   }
 }
