@@ -63,13 +63,20 @@ def build_general_journal(date_from: str, date_to: str, currency: str) -> dict:
     return {"from": date_from, "to": date_to, "currency": currency, "lines": rows}
 
 
-def build_sales_by_customer(date_from: str, date_to: str, currency: str) -> dict:
-    """Net sales by customer = gross invoices − sales returns in the period."""
+def build_sales_by_customer(date_from: str, date_to: str, currency: str = "AFN") -> dict:
+    """Net sales by customer = gross invoices − sales returns in the period.
+
+    Sale / SaleReturn have no currency field; amounts are shop home currency.
+    """
     sales_qs = (
         Sale.objects.filter(
+            is_deleted=False,
             sale_date__date__gte=date_from,
             sale_date__date__lte=date_to,
-            currency=currency,
+            document_kind__in=[
+                SaleDocumentKind.INVOICE,
+                SaleDocumentKind.CASH_RECEIPT,
+            ],
         )
         .values("customer_id", "customer__name")
         .annotate(gross=Sum("total_amount"))
@@ -79,7 +86,6 @@ def build_sales_by_customer(date_from: str, date_to: str, currency: str) -> dict
             is_deleted=False,
             return_date__date__gte=date_from,
             return_date__date__lte=date_to,
-            currency=currency,
         )
         .values("customer_id", "customer__name")
         .annotate(returns=Sum("total_amount"))
@@ -121,9 +127,14 @@ def build_sales_by_customer(date_from: str, date_to: str, currency: str) -> dict
     return {"from": date_from, "to": date_to, "currency": currency, "rows": rows}
 
 
-def build_purchases_by_vendor(date_from: str, date_to: str, currency: str) -> dict:
+def build_purchases_by_vendor(date_from: str, date_to: str, currency: str = "AFN") -> dict:
+    """Purchase totals by supplier. Purchase has no currency field."""
     qs = (
-        Purchase.objects.filter(purchase_date__gte=date_from, purchase_date__lte=date_to, currency=currency)
+        Purchase.objects.filter(
+            is_deleted=False,
+            purchase_date__gte=date_from,
+            purchase_date__lte=date_to,
+        )
         .values("supplier_id", "supplier__name")
         .annotate(total=Sum("total_amount"))
         .order_by("-total")
@@ -139,22 +150,26 @@ def build_purchases_by_vendor(date_from: str, date_to: str, currency: str) -> di
     return {"from": date_from, "to": date_to, "currency": currency, "rows": rows}
 
 
-def build_collection_report(date_from: str, date_to: str, currency: str) -> dict:
+def build_collection_report(date_from: str, date_to: str, currency: str = "AFN") -> dict:
     """
     Cash inflows at invoice time minus cash refunds on sales returns.
     AR-only credits (returns without refund) are not collections.
+    Sale / SaleReturn have no currency field.
     """
     sales = Sale.objects.filter(
+        is_deleted=False,
         sale_date__date__gte=date_from,
         sale_date__date__lte=date_to,
-        currency=currency,
         received_amount__gt=0,
+        document_kind__in=[
+            SaleDocumentKind.INVOICE,
+            SaleDocumentKind.CASH_RECEIPT,
+        ],
     ).select_related("customer")
     returns = SaleReturn.objects.filter(
         is_deleted=False,
         return_date__date__gte=date_from,
         return_date__date__lte=date_to,
-        currency=currency,
         refunded_amount__gt=0,
     ).select_related("customer")
 
@@ -200,14 +215,13 @@ def build_collection_report(date_from: str, date_to: str, currency: str) -> dict
     }
 
 
-def build_sales_returns_report(date_from: str, date_to: str, currency: str) -> dict:
-    """Sales return / credit note register for the period."""
+def build_sales_returns_report(date_from: str, date_to: str, currency: str = "AFN") -> dict:
+    """Sales return / credit note register for the period. SaleReturn has no currency field."""
     qs = (
         SaleReturn.objects.filter(
             is_deleted=False,
             return_date__date__gte=date_from,
             return_date__date__lte=date_to,
-            currency=currency,
         )
         .select_related("customer", "sale")
         .order_by("-return_date", "-id")
@@ -308,38 +322,67 @@ def build_aging_detail(*, kind: str, currency: str, as_of: date | None = None) -
 
 
 def build_stock_ledger(currency: str = None) -> dict:
+    """Current stock by product — quantity / buy / sell (no legacy measurement fields)."""
     rows = []
-    for inv in Inventory.objects.select_related("product").filter(is_deleted=False):
+    qs = (
+        Inventory.objects.select_related("product", "product__category")
+        .filter(is_deleted=False)
+        .order_by("product__name")
+    )
+    for inv in qs:
+        product = inv.product
         rows.append(
             {
                 "inventory_id": inv.id,
-                "product": inv.product.name if inv.product else "—",
-                "quantity": _money(inv.quantity or 0),
-                "buy_price": _money(inv.buy_price or 0),
+                "product": product.name if product else "—",
+                "barcode": (product.barcode if product else "") or "—",
+                "category": (
+                    product.category.name
+                    if product and getattr(product, "category_id", None)
+                    else "—"
+                ),
+                "quantity": _money(Decimal(str(inv.quantity or 0))),
+                "buy_price": _money(Decimal(str(inv.buy_price or 0))),
+                "sell_price": _money(Decimal(str(inv.sell_price or 0))),
+                "min_quantity": _money(Decimal(str(inv.min_quantity or 0))),
             }
         )
     return {"rows": rows}
 
 
 def build_stock_valuation(currency: str = None) -> dict:
+    """Inventory value at buy price × quantity."""
     total = Decimal("0")
     rows = []
-    for inv in Inventory.objects.select_related("product").filter(is_deleted=False):
-        qty = inv.quantity or Decimal("0")
-        value = (Decimal(str(qty or 0)) * Decimal(str(inv.buy_price or 0))).quantize(
-            Decimal("0.01")
-        )
+    qs = (
+        Inventory.objects.select_related("product", "product__category")
+        .filter(is_deleted=False)
+        .order_by("product__name")
+    )
+    for inv in qs:
+        product = inv.product
+        qty = Decimal(str(inv.quantity or 0))
+        buy = Decimal(str(inv.buy_price or 0))
+        value = (qty * buy).quantize(Decimal("0.01"))
         total += value
-        if value > 0:
-            rows.append(
-                {
-                    "inventory_id": inv.id,
-                    "product": inv.product.name if inv.product else "—",
-                    "quantity": _money(qty),
-                    "buy_price": _money(inv.buy_price or 0),
-                    "value": _money(value),
-                }
-            )
+        if qty == 0 and value == 0:
+            continue
+        rows.append(
+            {
+                "inventory_id": inv.id,
+                "product": product.name if product else "—",
+                "barcode": (product.barcode if product else "") or "—",
+                "category": (
+                    product.category.name
+                    if product and getattr(product, "category_id", None)
+                    else "—"
+                ),
+                "quantity": _money(qty),
+                "buy_price": _money(buy),
+                "sell_price": _money(inv.sell_price or 0),
+                "value": _money(value),
+            }
+        )
     return {"currency": currency, "rows": rows, "total": _money(total)}
 
 

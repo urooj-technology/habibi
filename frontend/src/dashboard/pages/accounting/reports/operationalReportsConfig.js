@@ -195,11 +195,12 @@ export const operationalReports = [
     dataKey: "rows",
     columns: [
       { id: "product", label: "sales.product" },
-      { id: "weight", label: "inventory.weightAmount", align: "right" },
-      { id: "meter", label: "inventory.meterAmount", align: "right" },
-      { id: "khada", label: "inventory.khadaAmount", align: "right" },
-      { id: "grain", label: "inventory.grainAmount", align: "right" },
-      { id: "buy_price", label: "operationalReports.buyPrice", align: "right", money: true },
+      { id: "barcode", label: "product.barcode" },
+      { id: "category", label: "product.category" },
+      { id: "quantity", label: "common.quantity", align: "right" },
+      { id: "buy_price", label: "inventory.buyPrice", align: "right", money: true },
+      { id: "sell_price", label: "pricing.sellPrice", align: "right", money: true },
+      { id: "min_quantity", label: "inventory.minQuantity", align: "right" },
     ],
   },
   {
@@ -212,7 +213,12 @@ export const operationalReports = [
     totalField: "total",
     columns: [
       { id: "product", label: "sales.product" },
-      { id: "value", label: "common.total", align: "right", money: true },
+      { id: "barcode", label: "product.barcode" },
+      { id: "category", label: "product.category" },
+      { id: "quantity", label: "common.quantity", align: "right" },
+      { id: "buy_price", label: "inventory.buyPrice", align: "right", money: true },
+      { id: "sell_price", label: "pricing.sellPrice", align: "right", money: true },
+      { id: "value", label: "operationalReports.stockValue", align: "right", money: true },
     ],
   },
   {
