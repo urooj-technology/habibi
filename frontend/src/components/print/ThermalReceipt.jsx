@@ -19,7 +19,8 @@ export function formatQty(amount) {
 }
 
 /**
- * Compact 80mm thermal receipt — labels follow active UI language.
+ * 48mm thermal receipt — heavy black type so it stays readable on low-heat
+ * thermal heads. Labels follow the active UI language.
  */
 const ThermalReceipt = forwardRef(function ThermalReceipt(
   {
@@ -39,18 +40,17 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
   const shopName = t("common.shortName", "Poshak Habibi");
   const phone = shopPhoneLine();
   const address = shopAddressLine();
+  const itemCount = lines.length;
 
   return (
     <div ref={ref} style={s.page}>
       <header style={s.header}>
         <div style={s.shopName}>{shopName}</div>
-        <div style={s.shopMeta}>{phone}</div>
+        <div style={s.shopPhone}>{phone}</div>
         <div style={s.shopAddress}>{address}</div>
       </header>
 
-      <div style={s.rule} />
-
-      <div style={s.docTitle}>{docTitle}</div>
+      <div style={s.titleBar}>{docTitle}</div>
 
       <div style={s.metaBlock}>
         <MetaRow label={t("receipt.number", "No.")} value={`#${docId}`} />
@@ -64,29 +64,31 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
       <div style={s.rule} />
 
       <div style={s.colHead}>
-        <span style={s.colItem}>{t("receipt.item", "Item")}</span>
-        <span style={s.colQty}>{t("receipt.qty", "Qty")}</span>
-        <span style={s.colPrice}>{t("receipt.price", "Price")}</span>
-        <span style={s.colTotal}>{t("receipt.amount", "Amount")}</span>
+        <span>{t("receipt.item", "Item")}</span>
+        <span>{t("receipt.amount", "Amount")}</span>
       </div>
 
-      <div style={s.dash} />
+      <div style={s.rule} />
 
-      {lines.length === 0 ? (
+      {itemCount === 0 ? (
         <div style={s.empty}>—</div>
       ) : (
-        lines.map((row) => (
-          <div key={row.index} style={s.lineBlock}>
+        lines.map((row, idx) => (
+          <div
+            key={row.index}
+            style={{
+              ...s.lineBlock,
+              ...(idx === itemCount - 1 ? { borderBottom: "none" } : null),
+            }}
+          >
             <div style={s.lineName}>
               {row.index}. {row.productName}
             </div>
             <div style={s.lineNums}>
-              <span style={s.colItem} />
-              <span style={s.colQty}>{formatQty(row.qty)}</span>
-              <span style={s.colPrice}>{formatMoney(row.unitPrice)}</span>
-              <span style={{ ...s.colTotal, fontWeight: 700 }}>
-                {formatMoney(row.lineTotal)}
+              <span style={s.lineCalc}>
+                {formatQty(row.qty)} × {formatMoney(row.unitPrice)}
               </span>
+              <span style={s.lineTotal}>{formatMoney(row.lineTotal)}</span>
             </div>
           </div>
         ))
@@ -94,19 +96,25 @@ const ThermalReceipt = forwardRef(function ThermalReceipt(
 
       <div style={s.rule} />
 
+      <div style={s.countRow}>
+        <span>{t("receipt.items", "Items")}</span>
+        <span style={s.num}>{itemCount}</span>
+      </div>
+
       <div style={s.totals}>
-        {totals.map((row) => (
-          <div
-            key={row.label}
-            style={{
-              ...s.totalRow,
-              ...(row.strong ? s.totalStrong : null),
-            }}
-          >
-            <span>{row.label}</span>
-            <span style={s.totalValue}>{formatMoney(row.value)}</span>
-          </div>
-        ))}
+        {totals.map((row) =>
+          row.strong ? (
+            <div key={row.label} style={s.grandTotal}>
+              <span>{row.label}</span>
+              <span style={s.num}>{formatMoney(row.value)}</span>
+            </div>
+          ) : (
+            <div key={row.label} style={s.totalRow}>
+              <span>{row.label}</span>
+              <span style={s.num}>{formatMoney(row.value)}</span>
+            </div>
+          )
+        )}
       </div>
 
       <div style={s.dash} />
@@ -129,136 +137,165 @@ function MetaRow({ label, value }) {
 
 const s = {
   page: {
-    width: "72mm",
-    maxWidth: "72mm",
+    width: "48mm",
+    maxWidth: "48mm",
     margin: "0 auto",
-    padding: "3mm 2.5mm 4mm",
+    padding: "2mm 1.5mm 5mm",
     background: "#fff",
     color: "#000",
     fontFamily: FONT,
     fontSize: "11px",
-    lineHeight: 1.35,
+    fontWeight: 700,
+    lineHeight: 1.3,
     direction: "inherit",
     boxSizing: "border-box",
+    overflowWrap: "anywhere",
   },
   header: {
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: "1.5mm",
   },
   shopName: {
-    fontSize: "16px",
-    fontWeight: 800,
-    letterSpacing: "0.02em",
-    lineHeight: 1.2,
+    fontSize: "17px",
+    fontWeight: 900,
+    lineHeight: 1.15,
   },
-  shopMeta: {
-    marginTop: 2,
-    fontSize: "10px",
-    fontWeight: 600,
+  shopPhone: {
+    marginTop: "0.8mm",
+    fontSize: "11px",
+    fontWeight: 800,
     unicodeBidi: "plaintext",
   },
   shopAddress: {
-    marginTop: 1,
-    fontSize: "9.5px",
-    lineHeight: 1.3,
+    marginTop: "0.5mm",
+    fontSize: "10px",
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+  titleBar: {
+    background: "#000",
+    color: "#fff",
+    textAlign: "center",
+    fontSize: "13px",
+    fontWeight: 900,
+    padding: "1mm 0",
+    margin: "1mm 0 1.5mm",
+    borderRadius: "1mm",
   },
   rule: {
-    borderTop: "1.5px solid #000",
-    margin: "5px 0",
+    borderTop: "2px solid #000",
+    margin: "1.2mm 0",
   },
   dash: {
-    borderTop: "1px dashed #000",
-    margin: "4px 0",
-  },
-  docTitle: {
-    textAlign: "center",
-    fontSize: "12px",
-    fontWeight: 800,
-    marginBottom: 4,
+    borderTop: "1.5px dashed #000",
+    margin: "1.5mm 0",
   },
   metaBlock: {
     display: "flex",
     flexDirection: "column",
-    gap: 2,
+    gap: "0.6mm",
   },
   metaRow: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 8,
+    gap: "1.5mm",
     alignItems: "baseline",
   },
   metaLabel: {
-    fontSize: "10px",
-    fontWeight: 600,
+    fontSize: "10.5px",
+    fontWeight: 700,
     whiteSpace: "nowrap",
   },
   metaValue: {
-    fontSize: "11px",
-    fontWeight: 700,
+    fontSize: "11.5px",
+    fontWeight: 900,
     textAlign: "end",
     wordBreak: "break-word",
+    unicodeBidi: "plaintext",
   },
   colHead: {
     display: "flex",
-    gap: 2,
-    fontSize: "9px",
-    fontWeight: 800,
-    textAlign: "center",
+    justifyContent: "space-between",
+    fontSize: "11px",
+    fontWeight: 900,
   },
-  colItem: { flex: "1 1 auto", textAlign: "start", minWidth: 0 },
-  colQty: { width: "14mm", flexShrink: 0, textAlign: "center" },
-  colPrice: { width: "16mm", flexShrink: 0, textAlign: "center" },
-  colTotal: { width: "18mm", flexShrink: 0, textAlign: "end" },
   empty: {
     textAlign: "center",
-    padding: "6px 0",
-    fontSize: "10px",
+    padding: "2mm 0",
+    fontSize: "11px",
   },
   lineBlock: {
-    padding: "3px 0",
-    borderBottom: "1px dotted #999",
+    padding: "1mm 0",
+    borderBottom: "1px dashed #000",
   },
   lineName: {
-    fontSize: "11px",
-    fontWeight: 700,
+    fontSize: "12px",
+    fontWeight: 900,
+    lineHeight: 1.25,
     wordBreak: "break-word",
   },
   lineNums: {
     display: "flex",
-    gap: 2,
-    marginTop: 2,
-    fontSize: "10px",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    gap: "1mm",
+    marginTop: "0.5mm",
     fontVariantNumeric: "tabular-nums",
+  },
+  lineCalc: {
+    fontSize: "11px",
+    fontWeight: 700,
+    direction: "ltr",
+    unicodeBidi: "isolate",
+  },
+  lineTotal: {
+    fontSize: "12px",
+    fontWeight: 900,
+    direction: "ltr",
+    unicodeBidi: "isolate",
+  },
+  countRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "11px",
+    fontWeight: 800,
+    marginBottom: "1mm",
+  },
+  num: {
+    fontVariantNumeric: "tabular-nums",
+    fontWeight: 900,
+    direction: "ltr",
+    unicodeBidi: "isolate",
   },
   totals: {
     display: "flex",
     flexDirection: "column",
-    gap: 3,
+    gap: "0.8mm",
+  },
+  grandTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "1mm",
+    background: "#000",
+    color: "#fff",
+    fontSize: "15px",
+    fontWeight: 900,
+    padding: "1.2mm 1.5mm",
+    borderRadius: "1mm",
   },
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 8,
-    fontSize: "11px",
-    fontWeight: 600,
-  },
-  totalStrong: {
+    gap: "1mm",
     fontSize: "12px",
     fontWeight: 800,
-    borderTop: "1px solid #000",
-    paddingTop: 3,
-    marginTop: 1,
-  },
-  totalValue: {
-    fontVariantNumeric: "tabular-nums",
-    fontWeight: 800,
-    textAlign: "end",
+    padding: "0 0.5mm",
   },
   footer: {
     textAlign: "center",
-    fontSize: "10px",
-    fontWeight: 700,
-    marginTop: 2,
+    fontSize: "11px",
+    fontWeight: 900,
   },
 };
 

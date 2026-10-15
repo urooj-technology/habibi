@@ -1,14 +1,19 @@
 /**
- * 80mm thermal receipt print helpers.
+ * 48mm thermal receipt print helpers.
  */
 
+export const THERMAL_PAPER_WIDTH_MM = 48;
+
 export const THERMAL_PRINT_CSS = `
-  @page { size: 80mm auto; margin: 0; }
+  @page { size: ${THERMAL_PAPER_WIDTH_MM}mm auto; margin: 0; }
   html, body {
     margin: 0;
     padding: 0;
     background: #fff;
-    width: 80mm;
+    color: #000;
+    width: ${THERMAL_PAPER_WIDTH_MM}mm;
+    -webkit-font-smoothing: none;
+    text-rendering: geometricPrecision;
   }
   * {
     box-sizing: border-box;

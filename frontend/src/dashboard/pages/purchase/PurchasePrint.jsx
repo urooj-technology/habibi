@@ -7,7 +7,7 @@ import {
   resolveLineProduct,
 } from "../../../utils/measurementConversion";
 
-/** 80mm thermal purchase receipt — localized labels. */
+/** 48mm thermal purchase receipt — localized labels. */
 const PurchasePrint = forwardRef(({ purchase }, ref) => {
   const { t, i18n } = useTranslation();
 

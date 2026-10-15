@@ -1572,6 +1572,7 @@
     "date": "Date",
     "contact": "Contact",
     "item": "Item",
+    "items": "Items",
     "qty": "Qty",
     "price": "Price",
     "amount": "Amount",
