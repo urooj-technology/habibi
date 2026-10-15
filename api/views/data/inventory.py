@@ -17,7 +17,9 @@ from api.views.data.pagination import CustomPagination
 
 
 class InventoryViewSet(DataRootViewSet):
-    queryset = Inventory.objects.select_related("product").all().order_by("-id")
+    queryset = Inventory.objects.select_related(
+        "product", "product__category"
+    ).all().order_by("-id")
     serializer_class = InventorySerializer
     permission_classes = [ModuleCRUDPermission("inventory")]
     filter_backends = [DjangoFilterBackend, SearchFilter]

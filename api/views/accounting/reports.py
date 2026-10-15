@@ -14,6 +14,8 @@ from account.permissions import HasPerm
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.common.pdf_export import HEADER_BG, apply_unicode_table_fonts, pdf_header_cell, pdf_paragraph
+from api.common.pdf_fonts import ensure_pdf_fonts
 from api.models.accounting.account import AccountingAccount
 from api.models.accounting.journal import JournalLine
 
@@ -183,7 +185,7 @@ def _excel_trial_balance(data: dict) -> HttpResponse:
     header_font = Font(bold=True, color="FFFFFF")
 
     ws.merge_cells("A1:I1")
-    ws["A1"] = f"Trial Balance ({data['currency']})"
+    ws["A1"] = "Trial Balance"
     ws["A1"].font = Font(bold=True, size=14)
     ws.merge_cells("A2:I2")
     ws["A2"] = f"Period: {data['from']} — {data['to']}"
@@ -272,8 +274,10 @@ def _pdf_trial_balance(data: dict) -> HttpResponse:
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
 
+    font_regular, font_bold = ensure_pdf_fonts()
+    styles = getSampleStyleSheet()
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -284,38 +288,36 @@ def _pdf_trial_balance(data: dict) -> HttpResponse:
         bottomMargin=20,
         title="Trial Balance",
     )
-    styles = getSampleStyleSheet()
     story = [
-        Paragraph(f"Trial Balance ({data['currency']})", styles["Title"]),
-        Paragraph(f"Period: {data['from']} — {data['to']}", styles["Normal"]),
+        pdf_paragraph("Trial Balance", styles["Title"], bold=True),
+        pdf_paragraph(f"Period: {data['from']} — {data['to']}"),
         Spacer(1, 10),
     ]
 
-    table_data = [
-        [
-            "Code",
-            "Account",
-            "Type",
-            "Op. Dr",
-            "Op. Cr",
-            "Per. Dr",
-            "Per. Cr",
-            "Cl. Dr",
-            "Cl. Cr",
-        ],
+    headers = [
+        "Code",
+        "Account",
+        "Type",
+        "Op. Dr",
+        "Op. Cr",
+        "Per. Dr",
+        "Per. Cr",
+        "Cl. Dr",
+        "Cl. Cr",
     ]
+    table_data = [[pdf_header_cell(h) for h in headers]]
     for r in data["rows"]:
         table_data.append(
             [
-                r["code"],
-                r["name"][:32],
-                r["account_type"][:8],
-                r.get("opening_debit") or "—",
-                r.get("opening_credit") or "—",
-                r["period_debit"],
-                r["period_credit"],
-                r.get("closing_debit") or "—",
-                r.get("closing_credit") or "—",
+                pdf_paragraph(r["code"]),
+                pdf_paragraph(str(r["name"])[:40]),
+                pdf_paragraph(str(r["account_type"])[:12]),
+                pdf_paragraph(r.get("opening_debit") or "—"),
+                pdf_paragraph(r.get("opening_credit") or "—"),
+                pdf_paragraph(r["period_debit"]),
+                pdf_paragraph(r["period_credit"]),
+                pdf_paragraph(r.get("closing_debit") or "—"),
+                pdf_paragraph(r.get("closing_credit") or "—"),
             ]
         )
     page_w, _ = landscape(A4)
@@ -324,45 +326,47 @@ def _pdf_trial_balance(data: dict) -> HttpResponse:
     tbl = Table(table_data, repeatRows=1, colWidths=col_widths)
     tbl.setStyle(
         TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 7),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, colors.HexColor("#F9FAFB")]),
-                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
-            ]
+            apply_unicode_table_fonts(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                    ("FONTNAME", (0, 1), (-1, -1), font_regular),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#F9FAFB")],
+                    ),
+                    ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
         )
     )
     story.append(tbl)
     story.append(Spacer(1, 10))
     net_val = data.get("net_income") or data.get("net_profit", "0.00")
-    story.append(
-        Paragraph(
-            f"<b>Net income ({data['currency']}):</b> {net_val}",
-            styles["Normal"],
-        )
-    )
+    story.append(pdf_paragraph(f"Net income: {net_val}", bold=True))
     formula = data.get("net_income_formula") or {}
     if formula:
         story.append(
-            Paragraph(
+            pdf_paragraph(
                 "Formula (Assets + Equity − Liabilities − Expenses): "
                 f"{formula.get('assets', '0')} + {formula.get('equity', '0')} "
-                f"− {formula.get('liabilities', '0')} − {formula.get('expenses', '0')}",
-                styles["Normal"],
+                f"− {formula.get('liabilities', '0')} − {formula.get('expenses', '0')}"
             )
         )
     by_type = data.get("period_net_by_type") or {}
     if by_type:
         parts = [f"{k}: {v}" for k, v in by_type.items()]
-        story.append(Paragraph("Period net by type: " + ", ".join(parts), styles["Normal"]))
+        story.append(pdf_paragraph("Period net by type: " + ", ".join(parts)))
     doc.build(story)
     pdf = buf.getvalue()
     buf.close()
-    fname = f"trial-balance_{data['currency']}_{data['from']}_{data['to']}.pdf"
+    fname = f"trial-balance_{data.get('currency') or 'AFN'}_{data['from']}_{data['to']}.pdf"
     resp = HttpResponse(pdf, content_type="application/pdf")
     resp["Content-Disposition"] = f'attachment; filename="{fname}"'
     return resp

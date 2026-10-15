@@ -3,13 +3,16 @@ Excel / PDF builders for customer and supplier ledger exports.
 Payload shape matches CustomerLedgerAPIView / SupplierLedgerAPIView JSON responses.
 """
 
-import io
 import csv
+import io
 import re
 from datetime import datetime
 from decimal import Decimal
 
 from django.http import HttpResponse
+
+from api.common.pdf_export import HEADER_BG, apply_unicode_table_fonts, pdf_header_cell, pdf_paragraph
+from api.common.pdf_fonts import ensure_pdf_fonts
 
 
 def _d2(val) -> float:
@@ -24,29 +27,17 @@ def _safe_filename_fragment(s: str) -> str:
     return re.sub(r"[^\w\-.]+", "_", s)[:80] if s else ""
 
 
-def _paragraph_escape(s: str) -> str:
-    return (
-        str(s or "")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
-
-
 def _export_sections(data: dict) -> list[dict]:
     """
-    Prefer per-currency sections when All currencies is selected.
-    Fall back to a single flat section for one-currency responses.
+    Prefer ledger sections when present; otherwise wrap the flat response.
+    Shop amounts are AFN (no multi-currency split in the UI).
     """
     sections = data.get("sections") or []
     if sections:
         return sections
-    display_ccy = data.get("currency") or ""
-    if display_ccy == "MIXED":
-        display_ccy = ""
     return [
         {
-            "currency": display_ccy or data.get("currency_filter") or "",
+            "currency": data.get("currency") or "AFN",
             "opening_balance": data.get("opening_balance", "0"),
             "closing_balance": data.get("closing_balance", "0"),
             "period_debit": data.get("period_debit", "0"),
@@ -73,10 +64,8 @@ def excel_contact_ledger_response(
     date_from = data.get("from", "")
     date_to = data.get("to", "")
     sections = _export_sections(data)
-    multi = len(sections) > 1
 
     wb = Workbook()
-    # Remove default sheet; create one sheet per currency section.
     default_ws = wb.active
     wb.remove(default_ws)
 
@@ -94,12 +83,10 @@ def excel_contact_ledger_response(
     subtitle_contact = contact_name if contact_name else f"#{entity_id}"
 
     for section in sections:
-        ccy = section.get("currency") or "AFN"
         lines = section.get("lines") or []
         opening = section.get("opening_balance", "0")
         closing = section.get("closing_balance", "0")
-        sheet_title = ccy if multi else "Ledger"
-        ws = wb.create_sheet(title=sheet_title[:31])
+        ws = wb.create_sheet(title="Ledger")
 
         ws.merge_cells("A1:J1")
         ws["A1"] = f"{ledger_label} — {subtitle_contact}"
@@ -108,9 +95,9 @@ def excel_contact_ledger_response(
 
         ws.merge_cells("A2:J2")
         ws["A2"] = (
-            f"Period: {date_from} — {date_to}  •  Currency: {ccy}"
-            f"  •  Opening: {_d2(opening):,.2f} {ccy}"
-            f"  •  Closing: {_d2(closing):,.2f} {ccy}"
+            f"Period: {date_from} — {date_to}"
+            f"  •  Opening: {_d2(opening):,.2f}"
+            f"  •  Closing: {_d2(closing):,.2f}"
         )
         ws["A2"].font = subtitle_font
         ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
@@ -128,9 +115,9 @@ def excel_contact_ledger_response(
             "Reference No",
             "Transaction Type",
             "Description",
-            f"Debit ({ccy})",
-            f"Credit ({ccy})",
-            f"Balance ({ccy})",
+            "Debit",
+            "Credit",
+            "Balance",
             "Created By",
             "Status",
         ]
@@ -214,7 +201,6 @@ def pdf_contact_ledger_response(
             SimpleDocTemplate,
             Table,
             TableStyle,
-            Paragraph,
             Spacer,
             PageBreak,
         )
@@ -231,6 +217,8 @@ def pdf_contact_ledger_response(
 
     subtitle_contact = contact_name if contact_name else f"#{entity_id}"
     generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    font_regular, font_bold = ensure_pdf_fonts()
+    styles = getSampleStyleSheet()
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -242,7 +230,6 @@ def pdf_contact_ledger_response(
         bottomMargin=22,
         title=ledger_label,
     )
-    styles = getSampleStyleSheet()
 
     page_w, _page_h = landscape(A4)
     usable_w = page_w - doc.leftMargin - doc.rightMargin
@@ -264,26 +251,19 @@ def pdf_contact_ledger_response(
         if idx:
             story.append(PageBreak())
 
-        ccy = section.get("currency") or "AFN"
         lines = section.get("lines") or []
         opening = section.get("opening_balance", "0")
         closing = section.get("closing_balance", "0")
 
         story.append(
-            Paragraph(
-                _paragraph_escape(f"{ledger_label}: {subtitle_contact} ({ccy})"),
-                styles["Title"],
-            )
+            pdf_paragraph(f"{ledger_label}: {subtitle_contact}", styles["Title"], bold=True)
         )
         story.append(
-            Paragraph(
-                _paragraph_escape(
-                    f"Period {date_from} — {date_to} | Opening: {opening} {ccy} | Closing: {closing} {ccy}"
-                ),
-                styles["Normal"],
+            pdf_paragraph(
+                f"Period {date_from} — {date_to} | Opening: {opening} | Closing: {closing}"
             )
         )
-        story.append(Paragraph(_paragraph_escape(f"Generated at: {generated_at}"), styles["Normal"]))
+        story.append(pdf_paragraph(f"Generated at: {generated_at}"))
         story.append(Spacer(1, 8))
 
         tbl_header = [
@@ -292,49 +272,57 @@ def pdf_contact_ledger_response(
             "Ref.",
             "Type",
             "Description",
-            f"Debit ({ccy})",
-            f"Credit ({ccy})",
-            f"Balance ({ccy})",
+            "Debit",
+            "Credit",
+            "Balance",
             "Created By",
             "Status",
         ]
-        table_rows = [tbl_header]
+        table_rows = [[pdf_header_cell(h) for h in tbl_header]]
         for ln in lines:
             table_rows.append(
                 [
-                    str(ln.get("date") or ln.get("entry_date") or ""),
-                    str(ln.get("voucher_no") or "-")[:24],
-                    str(ln.get("reference_no") or "-")[:24],
-                    str(ln.get("transaction_type") or "-")[:24],
-                    str(ln.get("description") or "-")[:52],
-                    str(ln.get("debit") or ln.get("debit_home") or "0.00"),
-                    str(ln.get("credit") or ln.get("credit_home") or "0.00"),
-                    str(ln.get("running_balance") or "0.00"),
-                    str(ln.get("created_by") or "-")[:18],
-                    str(ln.get("status") or "-")[:16],
+                    pdf_paragraph(ln.get("date") or ln.get("entry_date") or ""),
+                    pdf_paragraph(str(ln.get("voucher_no") or "-")[:24]),
+                    pdf_paragraph(str(ln.get("reference_no") or "-")[:24]),
+                    pdf_paragraph(str(ln.get("transaction_type") or "-")[:24]),
+                    pdf_paragraph(str(ln.get("description") or "-")[:52]),
+                    pdf_paragraph(ln.get("debit") or ln.get("debit_home") or "0.00"),
+                    pdf_paragraph(ln.get("credit") or ln.get("credit_home") or "0.00"),
+                    pdf_paragraph(ln.get("running_balance") or "0.00"),
+                    pdf_paragraph(str(ln.get("created_by") or "-")[:18]),
+                    pdf_paragraph(str(ln.get("status") or "-")[:16]),
                 ]
             )
 
         table = Table(table_rows, repeatRows=1, colWidths=col_widths)
         table.setStyle(
             TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 8),
-                    ("FONTSIZE", (0, 1), (-1, -1), 7),
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F9FAFB")]),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                    ("ALIGN", (0, 1), (0, -1), "CENTER"),
-                    ("ALIGN", (1, 1), (3, -1), "CENTER"),
-                    ("ALIGN", (5, 1), (7, -1), "RIGHT"),
-                ]
+                apply_unicode_table_fonts(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                        ("FONTNAME", (0, 1), (-1, -1), font_regular),
+                        ("FONTSIZE", (0, 0), (-1, 0), 8),
+                        ("FONTSIZE", (0, 1), (-1, -1), 7),
+                        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#F9FAFB")],
+                        ),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+                        ("ALIGN", (1, 1), (3, -1), "CENTER"),
+                        ("ALIGN", (5, 1), (7, -1), "RIGHT"),
+                    ]
+                )
             )
         )
         story.append(table)
@@ -378,11 +366,9 @@ def csv_contact_ledger_response(
     writer.writerow(["Period", date_from, date_to])
 
     for section in sections:
-        ccy = section.get("currency") or ""
         writer.writerow([])
         writer.writerow(
             [
-                f"Currency: {ccy}",
                 f"Opening: {section.get('opening_balance', '0')}",
                 f"Closing: {section.get('closing_balance', '0')}",
             ]
@@ -394,12 +380,11 @@ def csv_contact_ledger_response(
                 "Reference No",
                 "Transaction Type",
                 "Description",
-                f"Debit ({ccy})",
-                f"Credit ({ccy})",
-                f"Running Balance ({ccy})",
+                "Debit",
+                "Credit",
+                "Running Balance",
                 "Created By",
                 "Status",
-                "Currency",
             ]
         )
         for ln in section.get("lines") or []:
@@ -415,7 +400,6 @@ def csv_contact_ledger_response(
                     ln.get("running_balance") or "0.00",
                     ln.get("created_by") or "",
                     ln.get("status") or "",
-                    ln.get("currency") or ccy,
                 ]
             )
     return resp

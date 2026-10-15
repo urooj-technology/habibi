@@ -15,6 +15,8 @@ from account.permissions import ModuleCRUDPermission
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+from api.common.pdf_export import HEADER_BG, apply_unicode_table_fonts, pdf_header_cell, pdf_paragraph
+from api.common.pdf_fonts import ensure_pdf_fonts
 from api.models.accounting.account import AccountingAccount
 from api.serializers.accounting.account import AccountingAccountSerializer
 from api.views.data.pagination import StandardResultsPagination
@@ -88,12 +90,12 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
         align_right = Alignment(horizontal="right", vertical="center")
 
         # Title rows
-        ws.merge_cells("A1:L1")
+        ws.merge_cells("A1:H1")
         ws["A1"] = "Chart of Accounts"
         ws["A1"].font = title_font
         ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
 
-        ws.merge_cells("A2:L2")
+        ws.merge_cells("A2:H2")
         ws["A2"] = f"Generated at: {generated_at}"
         ws["A2"].font = subtitle_font
         ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
@@ -105,14 +107,10 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             "Account Name",
             "Type",
             "Role",
-            "Currency",
             "Active",
             "Debit",
             "Credit",
             "Balance",
-            "Debit (AFN book)",
-            "Credit (AFN book)",
-            "Balance (AFN book)",
         ]
         ws.append(headers)  # row 4
 
@@ -130,12 +128,6 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             except Exception:
                 return 0.0
 
-        def d4(v):
-            try:
-                return float(Decimal(str(v or "0")).quantize(Decimal("0.0001")))
-            except Exception:
-                return 0.0
-
         data_start = ws.max_row + 1
         for r in rows:
             ws.append(
@@ -144,26 +136,22 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
                     r.get("name", ""),
                     r.get("account_type", ""),
                     r.get("role", ""),
-                    r.get("currency", ""),
                     "Yes" if r.get("is_active") else "No",
                     d2(r.get("total_debit")),
                     d2(r.get("total_credit")),
                     d2(r.get("balance")),
-                    d2(r.get("total_debit_afn")),
-                    d2(r.get("total_credit_afn")),
-                    d2(r.get("balance_afn")),
                 ]
             )
 
         data_end = ws.max_row
 
         # Formats & borders for data
-        money_cols = [7, 8, 9, 10, 11, 12]
+        money_cols = [6, 7, 8]
         for row in range(data_start, data_end + 1):
-            for col in range(1, 13):
+            for col in range(1, 9):
                 c = ws.cell(row=row, column=col)
                 c.border = border
-                if col in (1, 5, 6):
+                if col in (1, 5):
                     c.alignment = align_center
                 elif col in money_cols:
                     c.alignment = align_right
@@ -175,7 +163,7 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
         ws.freeze_panes = f"A{data_start}"
 
         # Auto-filter on header
-        ws.auto_filter.ref = f"A{header_row}:L{data_end}"
+        ws.auto_filter.ref = f"A{header_row}:H{data_end}"
 
         # Column widths (balanced for readability)
         widths = {
@@ -183,14 +171,10 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             2: 34,   # name
             3: 14,   # type
             4: 16,   # role
-            5: 10,   # currency
-            6: 10,   # active
+            5: 10,   # active
+            6: 16,
             7: 16,
             8: 16,
-            9: 16,
-            10: 18,
-            11: 18,
-            12: 18,
         }
         for col_idx, w in widths.items():
             ws.column_dimensions[get_column_letter(col_idx)].width = w
@@ -213,13 +197,7 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             from reportlab.lib.pagesizes import A4, landscape
             from reportlab.lib import colors
             from reportlab.lib.styles import getSampleStyleSheet
-            from reportlab.platypus import (
-                SimpleDocTemplate,
-                Table,
-                TableStyle,
-                Paragraph,
-                Spacer,
-            )
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
         except Exception as e:  # pragma: no cover
             return HttpResponse(
                 f"PDF export dependency missing: {e}",
@@ -228,6 +206,8 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             )
 
         rows = AccountingAccountSerializer(self._export_queryset(), many=True).data
+        font_regular, font_bold = ensure_pdf_fonts()
+        styles = getSampleStyleSheet()
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -239,73 +219,68 @@ class AccountingAccountViewSet(viewsets.ModelViewSet):
             bottomMargin=20,
             title="Chart of Accounts",
         )
-        styles = getSampleStyleSheet()
 
         generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        title = pdf_paragraph("Chart of Accounts", styles["Title"], bold=True)
+        subtitle = pdf_paragraph(f"Generated at: {generated_at}")
 
-        title = Paragraph("Chart of Accounts", styles["Title"])
-        subtitle = Paragraph(f"Generated at: {generated_at}", styles["Normal"])
-
-        data = [
-            [
-                "Code",
-                "Name",
-                "Type",
-                "Role",
-                "Cur",
-                "Debit",
-                "Credit",
-                "Balance",
-            ]
-        ]
+        headers = ["Code", "Name", "Type", "Role", "Active", "Debit", "Credit", "Balance"]
+        data = [[pdf_header_cell(h) for h in headers]]
         for r in rows:
-            ccy = r.get("currency", "")
             data.append(
                 [
-                    r.get("code", ""),
-                    r.get("name", ""),
-                    r.get("account_type", ""),
-                    r.get("role", ""),
-                    ccy,
-                    str(r.get("total_debit", "0.00")),
-                    str(r.get("total_credit", "0.00")),
-                    str(r.get("balance", "0.00")),
+                    pdf_paragraph(r.get("code", "")),
+                    pdf_paragraph(r.get("name", "")),
+                    pdf_paragraph(r.get("account_type", "")),
+                    pdf_paragraph(r.get("role", "")),
+                    pdf_paragraph("Yes" if r.get("is_active") else "No"),
+                    pdf_paragraph(r.get("total_debit", "0.00")),
+                    pdf_paragraph(r.get("total_credit", "0.00")),
+                    pdf_paragraph(r.get("balance", "0.00")),
                 ]
             )
 
         page_w, _page_h = landscape(A4)
         usable_w = page_w - doc.leftMargin - doc.rightMargin
         col_widths = [
-            usable_w * 0.08,  # code
-            usable_w * 0.32,  # name
-            usable_w * 0.12,  # type
-            usable_w * 0.14,  # role
-            usable_w * 0.06,  # currency
-            usable_w * 0.09,  # debit
-            usable_w * 0.09,  # credit
-            usable_w * 0.10,  # balance
+            usable_w * 0.08,
+            usable_w * 0.34,
+            usable_w * 0.12,
+            usable_w * 0.14,
+            usable_w * 0.08,
+            usable_w * 0.08,
+            usable_w * 0.08,
+            usable_w * 0.08,
         ]
 
         table = Table(data, repeatRows=1, colWidths=col_widths)
         table.setStyle(
             TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 9),
-                    ("FONTSIZE", (0, 1), (-1, -1), 8),
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F9FAFB")]),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("ALIGN", (0, 0), (0, -1), "CENTER"),  # code
-                    ("ALIGN", (4, 0), (4, -1), "CENTER"),  # currency
-                    ("ALIGN", (5, 0), (-1, -1), "RIGHT"),  # money columns
-                ]
+                apply_unicode_table_fonts(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                        ("FONTNAME", (0, 1), (-1, -1), font_regular),
+                        ("FONTSIZE", (0, 0), (-1, 0), 9),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D5DB")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#F9FAFB")],
+                        ),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                        ("ALIGN", (4, 0), (4, -1), "CENTER"),
+                        ("ALIGN", (5, 0), (-1, -1), "RIGHT"),
+                    ]
+                )
             )
         )
 
