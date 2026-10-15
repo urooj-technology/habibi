@@ -175,7 +175,9 @@ const OperationalReportPage = () => {
     if (col.money && val != null) {
       return formatReportMoney(val, "");
     }
-    return val ?? "—";
+    if (val == null || val === "") return "—";
+    if (col.suffix) return `${val}${col.suffix}`;
+    return val;
   };
 
   const periodLabel = config.filters.includes("dateRange")
@@ -207,6 +209,26 @@ const OperationalReportPage = () => {
         label: t(`operationalReports.buckets.${key}`, key),
         value: formatReportMoney(val, ""),
       }));
+    }
+    if (config.summaryType === "categoryProfit" && data.totals) {
+      return [
+        {
+          label: t("operationalReports.netSales"),
+          value: formatReportMoney(data.totals.net_sales, ""),
+        },
+        {
+          label: t("operationalReports.cogs"),
+          value: formatReportMoney(data.totals.cogs, ""),
+        },
+        {
+          label: t("operationalReports.grossProfit"),
+          value: formatReportMoney(data.totals.gross_profit, ""),
+        },
+        {
+          label: t("operationalReports.marginPct"),
+          value: `${data.totals.margin_pct ?? "0.00"}%`,
+        },
+      ];
     }
     if (config.totalField && data[config.totalField] != null) {
       return [
@@ -285,7 +307,10 @@ const OperationalReportPage = () => {
         if (col.translateBucket && row[col.id]) {
           return t(`operationalReports.buckets.${row[col.id]}`, row[col.id]);
         }
-        return row[col.id] ?? "";
+        const val = row[col.id];
+        if (val == null || val === "") return "";
+        if (col.suffix) return `${val}${col.suffix}`;
+        return val;
       }
     );
   };

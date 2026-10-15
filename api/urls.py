@@ -42,6 +42,7 @@ from api.views.accounting.operational_reports import (
     OutstandingReceivablesReportAPIView,
     PayrollRegisterReportAPIView,
     ProfitAndLossReportAPIView,
+    ProfitByCategoryReportAPIView,
     PurchasesByVendorReportAPIView,
     SalesByCustomerReportAPIView,
     SalesReturnsReportAPIView,
@@ -218,5 +219,10 @@ urlpatterns = [
         "accounting/reports/profit-and-loss/",
         ProfitAndLossReportAPIView.as_view(),
         name="accounting-profit-and-loss",
+    ),
+    path(
+        "accounting/reports/profit-by-category/",
+        ProfitByCategoryReportAPIView.as_view(),
+        name="accounting-profit-by-category",
     ),
 ]

@@ -15,6 +15,7 @@ export const REPORT_IDS = {
   BANK_BOOK: "bank-book",
   CASH_FLOW: "cash-flow",
   OUTSTANDING_PAYABLES: "outstanding-payables",
+  PROFIT_BY_CATEGORY: "profit-by-category",
 };
 
 export const REPORT_CATEGORIES = {
@@ -89,6 +90,26 @@ export const operationalReports = [
       { id: "gross", label: "operationalReports.grossSales", align: "right", money: true },
       { id: "returns", label: "operationalReports.salesReturns", align: "right", money: true },
       { id: "total", label: "operationalReports.netSales", align: "right", money: true },
+    ],
+  },
+  {
+    id: REPORT_IDS.PROFIT_BY_CATEGORY,
+    category: REPORT_CATEGORIES.SALES,
+    i18nKey: "operationalReports.profitByCategory",
+    endpoint: "accounting/reports/profit-by-category/",
+    filters: ["dateRange"],
+    dataKey: "rows",
+    summaryType: "categoryProfit",
+    columns: [
+      { id: "category", label: "product.category" },
+      { id: "qty_sold", label: "operationalReports.qtySold", align: "right" },
+      { id: "qty_returned", label: "operationalReports.qtyReturned", align: "right" },
+      { id: "sales", label: "operationalReports.grossSales", align: "right", money: true },
+      { id: "returns", label: "operationalReports.salesReturns", align: "right", money: true },
+      { id: "net_sales", label: "operationalReports.netSales", align: "right", money: true },
+      { id: "cogs", label: "operationalReports.cogs", align: "right", money: true },
+      { id: "gross_profit", label: "operationalReports.grossProfit", align: "right", money: true },
+      { id: "margin_pct", label: "operationalReports.marginPct", align: "right", suffix: "%" },
     ],
   },
   {

@@ -18,7 +18,9 @@ function cellValue(row, col, { currency, formatMoney, translateBucket }) {
     const lineCcy = row.currency || (currency && currency !== "MIXED" ? currency : "");
     return formatMoney(val, lineCcy);
   }
-  return val == null || val === "" ? "—" : String(val);
+  if (val == null || val === "") return "—";
+  if (col.suffix) return `${val}${col.suffix}`;
+  return String(val);
 }
 
 /**

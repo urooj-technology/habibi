@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.utils import timezone
 
 from api.models.accounting.account import AccountingAccount
@@ -14,8 +14,10 @@ from api.models.data.customer import Customer
 from api.models.data.employee import Employee
 from api.models.data.inventory import Inventory
 from api.models.data.purchase import Purchase
-from api.models.data.sale import Sale
-from api.models.data.sale_return import SaleReturn
+from api.models.data.sale import Sale, SaleItems
+from api.models.data.sale_return import SaleReturn, SaleReturnItem
+from api.models.data.category import Category
+from api.choices import SaleDocumentKind
 from api.models.data.supplier import Supplier
 from api.models.payroll import PayrollRun
 from api.services.accounting.aging import _contact_balance
@@ -438,3 +440,142 @@ def build_outstanding_receivables(currency: str, as_of: date | None = None) -> d
     from api.services.accounting.aging import build_customer_receivables
 
     return build_customer_receivables(currency=currency, as_of=as_of)
+
+
+def build_profit_by_category(date_from: str, date_to: str) -> dict:
+    """
+    Gross profit by product category for partner / owner splits.
+
+    Each category row:
+      net sales   = sold revenue − returned revenue
+      COGS        = sold cost − returned cost (using line buy_price)
+      gross profit = net sales − COGS
+      margin %    = gross profit / net sales
+    """
+    money_field = DecimalField(max_digits=18, decimal_places=2)
+    sales_expr = ExpressionWrapper(F("quantity") * F("sale_price"), output_field=money_field)
+    cogs_expr = ExpressionWrapper(F("quantity") * F("buy_price"), output_field=money_field)
+
+    sales_qs = (
+        SaleItems.objects.filter(
+            is_deleted=False,
+            sale__is_deleted=False,
+            sale__sale_date__date__gte=date_from,
+            sale__sale_date__date__lte=date_to,
+            sale__document_kind__in=[
+                SaleDocumentKind.INVOICE,
+                SaleDocumentKind.CASH_RECEIPT,
+            ],
+        )
+        .values("inventory__product__category_id", "inventory__product__category__name")
+        .annotate(
+            qty_sold=Sum("quantity"),
+            sales=Sum(sales_expr),
+            cogs=Sum(cogs_expr),
+        )
+    )
+
+    returns_qs = (
+        SaleReturnItem.objects.filter(
+            is_deleted=False,
+            sale_return__is_deleted=False,
+            sale_return__return_date__date__gte=date_from,
+            sale_return__return_date__date__lte=date_to,
+        )
+        .values("inventory__product__category_id", "inventory__product__category__name")
+        .annotate(
+            qty_returned=Sum("quantity"),
+            returns=Sum(sales_expr),
+            return_cogs=Sum(cogs_expr),
+        )
+    )
+
+    by_cat: dict[int | None, dict] = {}
+
+    def _bucket(cid, name):
+        if cid not in by_cat:
+            by_cat[cid] = {
+                "category_id": cid,
+                "category": name or "—",
+                "qty_sold": Decimal("0"),
+                "qty_returned": Decimal("0"),
+                "sales": Decimal("0"),
+                "returns": Decimal("0"),
+                "cogs_sold": Decimal("0"),
+                "cogs_returned": Decimal("0"),
+            }
+        return by_cat[cid]
+
+    for row in sales_qs:
+        b = _bucket(row["inventory__product__category_id"], row["inventory__product__category__name"])
+        b["qty_sold"] += Decimal(row["qty_sold"] or 0)
+        b["sales"] += Decimal(row["sales"] or 0)
+        b["cogs_sold"] += Decimal(row["cogs"] or 0)
+
+    for row in returns_qs:
+        b = _bucket(row["inventory__product__category_id"], row["inventory__product__category__name"])
+        b["qty_returned"] += Decimal(row["qty_returned"] or 0)
+        b["returns"] += Decimal(row["returns"] or 0)
+        b["cogs_returned"] += Decimal(row["return_cogs"] or 0)
+
+    # Include categories with no activity so every partner still appears.
+    for cat in Category.objects.all().order_by("name"):
+        _bucket(cat.id, cat.name)
+
+    rows = []
+    tot_qty_sold = tot_qty_ret = tot_sales = tot_returns = tot_cogs = tot_profit = Decimal("0")
+
+    for b in by_cat.values():
+        net_sales = (b["sales"] - b["returns"]).quantize(Decimal("0.01"))
+        cogs = (b["cogs_sold"] - b["cogs_returned"]).quantize(Decimal("0.01"))
+        profit = (net_sales - cogs).quantize(Decimal("0.01"))
+        if net_sales != 0:
+            margin = (profit / net_sales * Decimal("100")).quantize(Decimal("0.01"))
+        else:
+            margin = Decimal("0.00")
+
+        tot_qty_sold += b["qty_sold"]
+        tot_qty_ret += b["qty_returned"]
+        tot_sales += b["sales"]
+        tot_returns += b["returns"]
+        tot_cogs += cogs
+        tot_profit += profit
+
+        rows.append(
+            {
+                "category_id": b["category_id"],
+                "category": b["category"],
+                "qty_sold": _money(b["qty_sold"]),
+                "qty_returned": _money(b["qty_returned"]),
+                "sales": _money(b["sales"]),
+                "returns": _money(b["returns"]),
+                "net_sales": _money(net_sales),
+                "cogs": _money(cogs),
+                "gross_profit": _money(profit),
+                "margin_pct": _money(margin),
+            }
+        )
+
+    rows.sort(key=lambda r: Decimal(r["gross_profit"]), reverse=True)
+    net_sales_total = (tot_sales - tot_returns).quantize(Decimal("0.01"))
+    margin_total = (
+        (tot_profit / net_sales_total * Decimal("100")).quantize(Decimal("0.01"))
+        if net_sales_total
+        else Decimal("0.00")
+    )
+
+    return {
+        "from": date_from,
+        "to": date_to,
+        "rows": rows,
+        "totals": {
+            "qty_sold": _money(tot_qty_sold),
+            "qty_returned": _money(tot_qty_ret),
+            "sales": _money(tot_sales),
+            "returns": _money(tot_returns),
+            "net_sales": _money(net_sales_total),
+            "cogs": _money(tot_cogs),
+            "gross_profit": _money(tot_profit),
+            "margin_pct": _money(margin_total),
+        },
+    }

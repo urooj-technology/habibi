@@ -22,6 +22,7 @@ from api.services.accounting.operational_reports import (
     build_sales_returns_report,
     build_stock_ledger,
     build_stock_valuation,
+    build_profit_by_category,
 )
 from api.services.accounting.financial_reports import (
     build_balance_sheet,
@@ -212,3 +213,16 @@ class ProfitAndLossReportAPIView(APIView):
         if not date_from or not date_to:
             return Response({"detail": "Query parameters `from` and `to` are required."}, status=400)
         return Response(build_profit_and_loss(date_from, date_to, _currency(request)))
+
+
+class ProfitByCategoryReportAPIView(APIView):
+    """Gross profit per product category — for partner / owner splits."""
+
+    permission_classes = [HasPerm("accounting.view")]
+
+    def get(self, request):
+        date_from = _parse_date(request.query_params.get("from") or request.query_params.get("date_from"))
+        date_to = _parse_date(request.query_params.get("to") or request.query_params.get("date_to"))
+        if not date_from or not date_to:
+            return Response({"detail": "Query parameters `from` and `to` are required."}, status=400)
+        return Response(build_profit_by_category(date_from, date_to))
