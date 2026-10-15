@@ -171,6 +171,7 @@ const CategoryIndex = () => {
   const columns = [
     { id: 'id', label: t('common.id'), sortable: true },
     { id: 'name', label: t('category.name'), sortable: true },
+    { id: 'actions', label: t('common.actions'), sortable: false, minWidth: 120 },
   ];
 
   // Toolbar buttons
