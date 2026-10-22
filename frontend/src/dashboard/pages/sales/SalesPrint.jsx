@@ -7,7 +7,7 @@ import {
   resolveLineProduct,
 } from "../../../utils/measurementConversion";
 
-/** 48mm thermal sale receipt — localized labels. */
+/** POS-80 thermal sale receipt — localized labels. */
 const SalesPrint = forwardRef(({ sale }, ref) => {
   const { t, i18n } = useTranslation();
 

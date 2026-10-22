@@ -1,8 +1,9 @@
 /**
- * 48mm thermal receipt print helpers.
+ * POS-80 thermal receipt printing (80mm roll, ~72mm printable width).
  */
 
-export const THERMAL_PAPER_WIDTH_MM = 48;
+export const THERMAL_PAPER_WIDTH_MM = 80;
+export const THERMAL_PRINTABLE_WIDTH_MM = 72;
 
 export const THERMAL_PRINT_CSS = `
   @page { size: ${THERMAL_PAPER_WIDTH_MM}mm auto; margin: 0; }
@@ -12,8 +13,6 @@ export const THERMAL_PRINT_CSS = `
     background: #fff;
     color: #000;
     width: ${THERMAL_PAPER_WIDTH_MM}mm;
-    -webkit-font-smoothing: none;
-    text-rendering: geometricPrecision;
   }
   * {
     box-sizing: border-box;
