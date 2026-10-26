@@ -22,6 +22,8 @@ from api.services.accounting.operational_reports import (
     build_sales_returns_report,
     build_stock_ledger,
     build_stock_valuation,
+    build_products_by_category,
+    build_products_by_supplier,
     build_profit_by_category,
 )
 from api.services.accounting.financial_reports import (
@@ -126,6 +128,24 @@ class StockValuationReportAPIView(APIView):
 
     def get(self, request):
         return Response(build_stock_valuation(_currency(request)))
+
+
+class ProductsByCategoryReportAPIView(APIView):
+    """Product count (and stock qty) for each category."""
+
+    permission_classes = [HasPerm("inventory.view")]
+
+    def get(self, request):
+        return Response(build_products_by_category())
+
+
+class ProductsBySupplierReportAPIView(APIView):
+    """Distinct products purchased from each supplier."""
+
+    permission_classes = [HasPerm("inventory.view")]
+
+    def get(self, request):
+        return Response(build_products_by_supplier())
 
 
 class PayrollRegisterReportAPIView(APIView):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.utils import timezone
 
 from api.models.accounting.account import AccountingAccount
@@ -13,7 +13,8 @@ from api.models.accounting.journal import JournalEntry, JournalLine
 from api.models.data.customer import Customer
 from api.models.data.employee import Employee
 from api.models.data.inventory import Inventory
-from api.models.data.purchase import Purchase
+from api.models.data.product import Product
+from api.models.data.purchase import Purchase, PurchaseItem
 from api.models.data.sale import Sale, SaleItems
 from api.models.data.sale_return import SaleReturn, SaleReturnItem
 from api.models.data.category import Category
@@ -26,6 +27,10 @@ from api.services.accounting.financial_reports import build_profit_and_loss
 
 def _money(v: Decimal) -> str:
     return str(v.quantize(Decimal("0.01")))
+
+
+def _qty(v) -> str:
+    return str(Decimal(str(v or 0)).quantize(Decimal("0.01")))
 
 
 def build_general_journal(date_from: str, date_to: str, currency: str) -> dict:
@@ -384,6 +389,161 @@ def build_stock_valuation(currency: str = None) -> dict:
             }
         )
     return {"currency": currency, "rows": rows, "total": _money(total)}
+
+
+def build_products_by_category() -> dict:
+    """How many products (and on-hand stock qty) belong to each category."""
+    product_counts = {
+        row["category_id"]: int(row["product_count"] or 0)
+        for row in Product.objects.values("category_id").annotate(
+            product_count=Count("id")
+        )
+    }
+    stock_by_cat = {
+        row["product__category_id"]: {
+            "stock_qty": Decimal(str(row["stock_qty"] or 0)),
+            "stock_value": Decimal(str(row["stock_value"] or 0)),
+        }
+        for row in Inventory.objects.values("product__category_id").annotate(
+            stock_qty=Sum("quantity"),
+            stock_value=Sum(
+                ExpressionWrapper(
+                    F("quantity") * F("buy_price"),
+                    output_field=DecimalField(max_digits=18, decimal_places=2),
+                )
+            ),
+        )
+    }
+
+    rows = []
+    total_products = 0
+    total_stock_qty = Decimal("0")
+    total_stock_value = Decimal("0")
+
+    for cat in Category.objects.order_by("name"):
+        product_count = product_counts.get(cat.id, 0)
+        stock = stock_by_cat.get(cat.id) or {
+            "stock_qty": Decimal("0"),
+            "stock_value": Decimal("0"),
+        }
+        total_products += product_count
+        total_stock_qty += stock["stock_qty"]
+        total_stock_value += stock["stock_value"]
+        rows.append(
+            {
+                "category_id": cat.id,
+                "category": cat.name,
+                "product_count": product_count,
+                "stock_qty": _qty(stock["stock_qty"]),
+                "stock_value": _money(stock["stock_value"]),
+            }
+        )
+
+    rows.sort(key=lambda r: (-r["product_count"], r["category"]))
+    return {
+        "rows": rows,
+        "totals": {
+            "product_count": total_products,
+            "stock_qty": _qty(total_stock_qty),
+            "stock_value": _money(total_stock_value),
+        },
+    }
+
+
+def build_products_by_supplier() -> dict:
+    """
+    How many distinct products were purchased from each supplier.
+
+    Based on purchase history (PurchaseItem → Purchase.supplier).
+    Suppliers with no purchases still appear with zero counts.
+    """
+    purchase_stats = {
+        row["purchase__supplier_id"]: {
+            "product_count": int(row["product_count"] or 0),
+            "purchase_qty": Decimal(str(row["purchase_qty"] or 0)),
+            "purchase_amount": Decimal(str(row["purchase_amount"] or 0)),
+        }
+        for row in PurchaseItem.objects.filter(
+            purchase__supplier_id__isnull=False,
+        )
+        .values("purchase__supplier_id")
+        .annotate(
+            product_count=Count("product_id", distinct=True),
+            purchase_qty=Sum("quantity"),
+            purchase_amount=Sum(
+                ExpressionWrapper(
+                    F("quantity") * F("buy_price"),
+                    output_field=DecimalField(max_digits=18, decimal_places=2),
+                )
+            ),
+        )
+    }
+
+    # Walk-in / cash purchases (no supplier)
+    walk_in = (
+        PurchaseItem.objects.filter(purchase__supplier_id__isnull=True)
+        .aggregate(
+            product_count=Count("product_id", distinct=True),
+            purchase_qty=Sum("quantity"),
+            purchase_amount=Sum(
+                ExpressionWrapper(
+                    F("quantity") * F("buy_price"),
+                    output_field=DecimalField(max_digits=18, decimal_places=2),
+                )
+            ),
+        )
+    )
+
+    rows = []
+    total_products = 0
+    total_qty = Decimal("0")
+    total_amount = Decimal("0")
+
+    for supplier in Supplier.objects.order_by("name"):
+        stats = purchase_stats.get(supplier.id) or {
+            "product_count": 0,
+            "purchase_qty": Decimal("0"),
+            "purchase_amount": Decimal("0"),
+        }
+        total_products += stats["product_count"]
+        total_qty += stats["purchase_qty"]
+        total_amount += stats["purchase_amount"]
+        rows.append(
+            {
+                "supplier_id": supplier.id,
+                "supplier": supplier.name,
+                "product_count": stats["product_count"],
+                "purchase_qty": _qty(stats["purchase_qty"]),
+                "purchase_amount": _money(stats["purchase_amount"]),
+            }
+        )
+
+    walk_count = int(walk_in["product_count"] or 0)
+    walk_qty = Decimal(str(walk_in["purchase_qty"] or 0))
+    walk_amount = Decimal(str(walk_in["purchase_amount"] or 0))
+    if walk_count or walk_qty:
+        total_products += walk_count
+        total_qty += walk_qty
+        total_amount += walk_amount
+        rows.append(
+            {
+                "supplier_id": None,
+                "supplier": "—",
+                "product_count": walk_count,
+                "purchase_qty": _qty(walk_qty),
+                "purchase_amount": _money(walk_amount),
+            }
+        )
+
+    rows.sort(key=lambda r: (-r["product_count"], r["supplier"] or ""))
+    return {
+        "rows": rows,
+        "totals": {
+            "product_count": total_products,
+            "purchase_qty": _qty(total_qty),
+            "purchase_amount": _money(total_amount),
+        },
+    }
 
 
 def build_payroll_register(date_from: str, date_to: str, currency: str) -> dict:

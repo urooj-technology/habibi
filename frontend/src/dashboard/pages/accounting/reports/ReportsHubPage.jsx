@@ -66,30 +66,40 @@ const ReportsHubPage = () => {
         ]}
       />
 
-      <Card className="no-print mb-4 px-3.5 py-3 rounded-md border border-border bg-muted/40 shadow-none">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <div className="relative flex-1 sm:max-w-[320px]">
-            <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder={t("operationalReports.searchReports")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="ps-8 bg-background"
-            />
+      <Card className="no-print mb-4 px-4 py-4 rounded-md border border-border bg-card shadow-none">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_260px] md:items-end">
+          <div className="min-w-0 space-y-1.5">
+            <label className="block text-sm font-semibold text-foreground">
+              {t("operationalReports.searchReports")}
+            </label>
+            <div className="relative">
+              <Search className="absolute start-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder={t("operationalReports.searchReports")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-12 min-h-12 max-h-none w-full ps-11 text-base"
+              />
+            </div>
           </div>
-          <Select value={activeCategory} onValueChange={setActiveCategory}>
-            <SelectTrigger className="sm:min-w-[180px] bg-background">
-              <SelectValue placeholder={t("operationalReports.category", "Category")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("operationalReports.allCategories")}</SelectItem>
-              {CATEGORY_ORDER.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {t(`operationalReports.categories.${cat}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="min-w-0 space-y-1.5">
+            <label className="block text-sm font-semibold text-foreground">
+              {t("operationalReports.category", "Category")}
+            </label>
+            <Select value={activeCategory} onValueChange={setActiveCategory}>
+              <SelectTrigger className="h-12 w-full max-w-none text-base">
+                <SelectValue placeholder={t("operationalReports.category", "Category")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("operationalReports.allCategories")}</SelectItem>
+                {CATEGORY_ORDER.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {t(`operationalReports.categories.${cat}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 

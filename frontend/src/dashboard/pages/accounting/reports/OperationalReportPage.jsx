@@ -230,6 +230,39 @@ const OperationalReportPage = () => {
         },
       ];
     }
+    if (config.summaryType === "catalogCount" && data.totals) {
+      const items = [
+        {
+          label: t("operationalReports.productCount"),
+          value: String(data.totals.product_count ?? 0),
+        },
+      ];
+      if (data.totals.stock_qty != null) {
+        items.push({
+          label: t("operationalReports.stockQty"),
+          value: String(data.totals.stock_qty),
+        });
+      }
+      if (data.totals.stock_value != null) {
+        items.push({
+          label: t("operationalReports.stockValue"),
+          value: formatReportMoney(data.totals.stock_value, ""),
+        });
+      }
+      if (data.totals.purchase_qty != null) {
+        items.push({
+          label: t("operationalReports.purchaseQty"),
+          value: String(data.totals.purchase_qty),
+        });
+      }
+      if (data.totals.purchase_amount != null) {
+        items.push({
+          label: t("operationalReports.purchaseAmount"),
+          value: formatReportMoney(data.totals.purchase_amount, ""),
+        });
+      }
+      return items;
+    }
     if (config.totalField && data[config.totalField] != null) {
       return [
         {
@@ -540,7 +573,7 @@ const OperationalReportPage = () => {
               rows={rows}
               renderCell={renderCell}
               currency=""
-              showSearch={rows.length > 12}
+              showSearch={rows.length > 0}
             />
           )}
         </ReportDocument>

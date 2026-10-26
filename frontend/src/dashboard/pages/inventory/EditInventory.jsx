@@ -74,12 +74,13 @@ const EditInventory = () => {
     min_quantity: amountField(),
   });
 
-  const {
-    handleUpdate,
-    loading: updateLoading,
-    isSuccess,
-    error: updateError,
-  } = useUpdate("inventory", token, t("inventory.updateSuccess"), t("inventory.updateError"));
+  const { handleUpdate, loading: updateLoading } = useUpdate(
+    "inventory",
+    token,
+    "/app/inventory/stock",
+    t("inventory.updateSuccess"),
+    t("inventory.updateError")
+  );
 
   const formik = useFormik({
     initialValues: {
@@ -95,10 +96,6 @@ const EditInventory = () => {
     },
     enableReinitialize: true,
   });
-
-  useEffect(() => {
-    if (isSuccess) navigate("/app/inventory/stock");
-  }, [isSuccess, navigate]);
 
   useEffect(() => {
     if (!inventoryItem) return;
@@ -157,14 +154,6 @@ const EditInventory = () => {
       />
 
       <FormBody>
-        {updateError && (
-          <InlineAlert
-            severity="error"
-            message={updateError.message || t("common.errorOccurred")}
-            title={t("common.error")}
-          />
-        )}
-
         <FormGrid>
           <FormSection
             span="full"

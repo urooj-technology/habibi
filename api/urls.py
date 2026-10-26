@@ -48,6 +48,8 @@ from api.views.accounting.operational_reports import (
     SalesReturnsReportAPIView,
     StockLedgerReportAPIView,
     StockValuationReportAPIView,
+    ProductsByCategoryReportAPIView,
+    ProductsBySupplierReportAPIView,
 )
 from api.views.payroll import PayrollRunViewSet
 from api.views.accounting_utils import OpeningBalanceEntryViewSet
@@ -179,6 +181,16 @@ urlpatterns = [
         "accounting/reports/stock-valuation/",
         StockValuationReportAPIView.as_view(),
         name="accounting-stock-valuation",
+    ),
+    path(
+        "accounting/reports/products-by-category/",
+        ProductsByCategoryReportAPIView.as_view(),
+        name="accounting-products-by-category",
+    ),
+    path(
+        "accounting/reports/products-by-supplier/",
+        ProductsBySupplierReportAPIView.as_view(),
+        name="accounting-products-by-supplier",
     ),
     path(
         "accounting/reports/payroll-register/",

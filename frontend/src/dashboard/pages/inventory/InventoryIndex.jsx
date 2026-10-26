@@ -133,7 +133,7 @@ const InventoryIndex = () => {
   };
 
   const handleEdit = (id) => {
-    navigate(`/app/inventory/edit/${id}`);
+    navigate(`/app/inventory/stock/${id}/edit`);
   };
 
   // Handle filter modal
@@ -292,6 +292,12 @@ const InventoryIndex = () => {
         return q != null && q !== "" ? parseFloat(q).toFixed(2) : "0.00";
       },
     },
+    {
+      id: "actions",
+      label: t("common.actions"),
+      sortable: false,
+      minWidth: 120,
+    },
   ];
 
   const InfoField = ({ label, value }) => (
@@ -326,6 +332,8 @@ const InventoryIndex = () => {
         data={inventoryData || []}
         title={t("inventory.inventoryList")}
         onView={handleView}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
         onSearch={handleSearch}
         enableSelection={true}
         rowActions={true}
