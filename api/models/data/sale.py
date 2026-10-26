@@ -29,6 +29,18 @@ class Sale(DataRoot):
     total_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
+    discount_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Invoice discount in money; total_amount is net after this.",
+    )
+    discount_percent = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Invoice discount percent (stored for re-edit; amount is authoritative).",
+    )
     received_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )

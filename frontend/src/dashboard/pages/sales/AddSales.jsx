@@ -21,6 +21,7 @@ import { useEnterNavigatesItemFields } from "../../../hooks/useEnterNavigatesIte
 import useFormDraft from "../../../hooks/useFormDraft";
 import FormDraftBanner from "../../../components/FormDraftBanner";
 import { calculatePricedLineTotal, quantityPayload } from "../../../utils/measurementConversion";
+import { computeSaleTotals } from "../../../utils/saleDiscount";
 import { formatShopMoney } from "@/config/shopConfig";
 import {
   PosShell,
@@ -117,7 +118,10 @@ const AddSales = () => {
     received_amount: "",
     payment_account: null,
     notes: "",
+    discount_amount: "",
+    discount_percent: "",
   });
+  const [discountSource, setDiscountSource] = useState("amount");
 
   const [saleItems, setSaleItems] = useState([]);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
@@ -197,6 +201,21 @@ const AddSales = () => {
       .toFixed(2);
   }, [saleItems, calculateItemTotal]);
 
+  const saleTotals = useMemo(
+    () =>
+      computeSaleTotals(
+        itemsSubtotal,
+        formValues.discount_amount,
+        formValues.discount_percent,
+        discountSource
+      ),
+    [
+      itemsSubtotal,
+      formValues.discount_amount,
+      formValues.discount_percent,
+      discountSource,
+    ]
+  );
 
   const completedItems = useMemo(() => {
     return saleItems.filter((item) => {
@@ -330,7 +349,7 @@ const AddSales = () => {
     }
 
     const receivedNum = Number.parseFloat(formValues.received_amount || 0) || 0;
-    const totalNum = Number.parseFloat(itemsSubtotal || 0) || 0;
+    const totalNum = Number(saleTotals.total) || 0;
     if (!formValues.customer && totalNum > 0 && receivedNum < totalNum) {
       newErrors.customer = true;
       newErrors.received_amount = true;
@@ -388,10 +407,12 @@ const AddSales = () => {
     const saleData = {
       customer: formValues.customer || null,
       sale_date: formValues.sale_date,
-      total_amount: itemsSubtotal,
+      total_amount: saleTotals.total.toFixed(2),
+      discount_amount: saleTotals.discountAmount.toFixed(2),
+      discount_percent: saleTotals.discountPercent.toFixed(2),
       received_amount: (
         !formValues.customer
-          ? Number(itemsSubtotal) || 0
+          ? saleTotals.total
           : Number.parseFloat(formValues.received_amount || 0) || 0
       ).toFixed(2),
       payment_account: formValues.payment_account?.id || null,
@@ -416,7 +437,7 @@ const AddSales = () => {
     await handleAddCustomerApi(customerData);
   };
 
-  const grandTotalNumeric = Number(itemsSubtotal) || 0;
+  const grandTotalNumeric = Number(saleTotals.total) || 0;
   const totalAmountStr = grandTotalNumeric.toFixed(2);
   const isWalkIn = !formValues.customer;
   const prevTotalRef = useRef(totalAmountStr);
@@ -840,7 +861,72 @@ const AddSales = () => {
         </PosMain>
 
         <PosSummary title={t("sales.orderSummary", "Summary")}>
-          <div className="border-t border-border pt-2">
+          <div className="border-t border-border pt-2 space-y-2">
+            <PosTotalRow
+              label={t("sales.subtotal", "Subtotal")}
+              value={formatShopMoney(saleTotals.subtotal)}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <PosField label={t("sales.discountPercent", "Discount %")}>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  className={posControlClass}
+                  value={formValues.discount_percent}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setDiscountSource("percent");
+                    const next = computeSaleTotals(
+                      itemsSubtotal,
+                      formValues.discount_amount,
+                      raw,
+                      "percent"
+                    );
+                    setFormValues((prev) => ({
+                      ...prev,
+                      discount_percent: raw,
+                      discount_amount: raw === "" ? "" : String(next.discountAmount),
+                    }));
+                  }}
+                  placeholder="0"
+                />
+              </PosField>
+              <PosField label={t("sales.discountAmount", "Discount")}>
+                <Input
+                  type="number"
+                  min={0}
+                  max={saleTotals.subtotal || undefined}
+                  step="0.01"
+                  className={posControlClass}
+                  value={formValues.discount_amount}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setDiscountSource("amount");
+                    const next = computeSaleTotals(
+                      itemsSubtotal,
+                      raw,
+                      formValues.discount_percent,
+                      "amount"
+                    );
+                    setFormValues((prev) => ({
+                      ...prev,
+                      discount_amount: raw,
+                      discount_percent: raw === "" ? "" : String(next.discountPercent),
+                    }));
+                  }}
+                  placeholder="0.00"
+                />
+              </PosField>
+            </div>
+            {saleTotals.discountAmount > 0 ? (
+              <PosTotalRow
+                label={t("sales.discount", "Discount")}
+                value={`−${formatShopMoney(saleTotals.discountAmount)}`}
+                muted
+              />
+            ) : null}
             <PosTotalRow
               label={t("common.total")}
               value={formatShopMoney(grandTotalNumeric)}

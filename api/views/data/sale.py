@@ -87,6 +87,45 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
     def _line_qty(self, item_data):
         return self._d(item_data.get("quantity", item_data.get("grain_amount", 0)))
 
+    def _items_subtotal(self, items_data):
+        subtotal = Decimal("0.00")
+        for item_data in items_data or []:
+            subtotal += self._line_qty(item_data) * self._d(
+                item_data.get("sale_price", 0)
+            )
+        return subtotal.quantize(Decimal("0.01"))
+
+    def _normalize_discount_and_total(self, sale_data, *, subtotal: Decimal):
+        """
+        Cap discount to subtotal and set total_amount = subtotal − discount.
+
+        Accepts either discount_amount or discount_percent from the client.
+        Amount wins when both are sent and amount > 0; otherwise percent derives amount.
+        """
+        amount = self._d(sale_data.get("discount_amount", 0))
+        percent = self._d(sale_data.get("discount_percent", 0))
+        if amount < 0:
+            amount = Decimal("0.00")
+        if percent < 0:
+            percent = Decimal("0.00")
+        if percent > Decimal("100"):
+            percent = Decimal("100.00")
+
+        if amount <= 0 and percent > 0 and subtotal > 0:
+            amount = (subtotal * percent / Decimal("100")).quantize(Decimal("0.01"))
+        if amount > subtotal:
+            amount = subtotal
+        if subtotal > 0 and amount > 0:
+            percent = (amount / subtotal * Decimal("100")).quantize(Decimal("0.01"))
+        else:
+            percent = Decimal("0.00")
+            amount = Decimal("0.00")
+
+        sale_data["discount_amount"] = amount
+        sale_data["discount_percent"] = percent
+        sale_data["total_amount"] = (subtotal - amount).quantize(Decimal("0.01"))
+        return sale_data
+
     def _validate_payment_account(self, *, received, payment_account_id):
         received_d = self._d(received)
         if received_d <= 0:
@@ -139,6 +178,8 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
         try:
             sale_data = self._normalize_optional_customer(request.data)
             sale_items_data = sale_data.pop("items", [])
+            subtotal = self._items_subtotal(sale_items_data)
+            sale_data = self._normalize_discount_and_total(sale_data, subtotal=subtotal)
 
             walk_err = self._validate_walk_in_settlement(
                 customer=sale_data.get("customer"),
@@ -224,6 +265,15 @@ class SaleViewSet(SaleReturnableItemsMixin, DataRootViewSet):
         sale = self.get_object()
         sale_data = self._normalize_optional_customer(request.data)
         sale_items_data = sale_data.pop("items", None)
+
+        if sale_items_data is not None:
+            subtotal = self._items_subtotal(sale_items_data)
+        else:
+            subtotal = sum(
+                (self._d(i.quantity) * self._d(i.sale_price) for i in sale.sale_items.all()),
+                Decimal("0.00"),
+            ).quantize(Decimal("0.01"))
+        sale_data = self._normalize_discount_and_total(sale_data, subtotal=subtotal)
 
         walk_err = self._validate_walk_in_settlement(
             customer=sale_data.get("customer", sale.customer_id),

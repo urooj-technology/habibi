@@ -81,10 +81,19 @@ const SalesView = () => {
     [lines]
   );
 
+  const discountAmount = Math.max(
+    0,
+    Number.parseFloat(sale?.discount_amount || 0) || 0
+  );
+  const discountPercent = Math.max(
+    0,
+    Number.parseFloat(sale?.discount_percent || 0) || 0
+  );
+  const storedTotal = Math.max(0, Number.parseFloat(sale?.total_amount || 0) || 0);
   const totalAmount =
     itemsSubtotal > 0
-      ? itemsSubtotal
-      : Math.max(0, Number.parseFloat(sale?.total_amount || 0) || 0);
+      ? Math.max(0, itemsSubtotal - discountAmount)
+      : storedTotal;
   const receivedAmount = Math.max(
     0,
     Number.parseFloat(sale?.received_amount || 0) || 0
@@ -294,7 +303,24 @@ const SalesView = () => {
         </PosMain>
 
         <PosSummary title={t("payment.summary", "Payment summary")}>
-          <div className="border-t border-border pt-2">
+          <div className="border-t border-border pt-2 space-y-1">
+            {itemsSubtotal > 0 ? (
+              <PosTotalRow
+                label={t("sales.subtotal", "Subtotal")}
+                value={formatShopMoney(itemsSubtotal)}
+              />
+            ) : null}
+            {discountAmount > 0 ? (
+              <PosTotalRow
+                label={
+                  discountPercent > 0
+                    ? `${t("sales.discount", "Discount")} (${discountPercent}%)`
+                    : t("sales.discount", "Discount")
+                }
+                value={`−${formatShopMoney(discountAmount)}`}
+                muted
+              />
+            ) : null}
             <PosTotalRow
               label={t("sales.totalAmount")}
               value={formatShopMoney(totalAmount)}

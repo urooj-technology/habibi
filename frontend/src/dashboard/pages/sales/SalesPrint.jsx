@@ -32,10 +32,18 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
     });
 
     const linesSubtotal = lines.reduce((sum, row) => sum + row.lineTotal, 0);
+    const discountAmount = Math.max(
+      0,
+      Number.parseFloat(sale.discount_amount) || 0
+    );
+    const discountPercent = Math.max(
+      0,
+      Number.parseFloat(sale.discount_percent) || 0
+    );
     const storedTotal = Number.parseFloat(sale.total_amount);
     const invoiceTotal =
       lines.length > 0
-        ? linesSubtotal
+        ? Math.max(0, linesSubtotal - discountAmount)
         : Number.isFinite(storedTotal)
           ? storedTotal
           : 0;
@@ -53,6 +61,9 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
 
     return {
       lines,
+      linesSubtotal,
+      discountAmount,
+      discountPercent,
       invoiceTotal,
       receivedAmount,
       remainingAmount,
@@ -81,6 +92,25 @@ const SalesPrint = forwardRef(({ sale }, ref) => {
   }
 
   const totals = [
+    ...(bill.linesSubtotal > 0
+      ? [
+          {
+            label: t("receipt.subtotal", "Subtotal"),
+            value: bill.linesSubtotal,
+          },
+        ]
+      : []),
+    ...(bill.discountAmount > 0
+      ? [
+          {
+            label:
+              bill.discountPercent > 0
+                ? `${t("receipt.discount", "Discount")} (${bill.discountPercent}%)`
+                : t("receipt.discount", "Discount"),
+            value: -bill.discountAmount,
+          },
+        ]
+      : []),
     {
       label: t("receipt.total", "Total"),
       value: bill.invoiceTotal,
